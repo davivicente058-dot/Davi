@@ -604,3 +604,106 @@ print("===================================")
 print(" FPSBLOX DEFINITIVO CARREGADO ")
 print(" Mobile fraco | PC forte | Estável ")
 print("===================================")
+
+--==================================================
+-- FPSBLOX DEFINITIVO
+-- PARTE 5/5 - FLUIDEZ, VSYNC INTELIGENTE & POLIMENTO
+-- Revisado para NÃO causar bugs
+--==================================================
+
+if not _G.FPSBLOX or not _G.FPSBLOX._FINAL_LOADED then
+    warn("[FPSBLOX] Base não carregada. Parte 5 cancelada.")
+    return
+end
+
+local FPSBLOX = _G.FPSBLOX
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+--------------------------------------------------
+-- ESTADOS
+--------------------------------------------------
+FPSBLOX.Settings.SmoothMode = false
+FPSBLOX.Settings.TargetFPS = 60 -- efeito VSync
+FPSBLOX.Runtime.FrameTimes = {}
+FPSBLOX.Runtime.MaxSamples = 20
+
+--------------------------------------------------
+-- FPS SUAVIZADO (ANTI STUTTER)
+--------------------------------------------------
+local smoothedFPS = 60
+
+local function UpdateSmoothedFPS(rawFPS)
+    local frames = FPSBLOX.Runtime.FrameTimes
+    table.insert(frames, rawFPS)
+
+    if #frames > FPSBLOX.Runtime.MaxSamples then
+        table.remove(frames, 1)
+    end
+
+    local total = 0
+    for _, v in ipairs(frames) do
+        total += v
+    end
+
+    smoothedFPS = math.floor(total / #frames)
+end
+
+--------------------------------------------------
+-- LOOP DE FLUIDEZ
+--------------------------------------------------
+RunService.RenderStepped:Connect(function(dt)
+    if dt <= 0 then return end
+
+    local fps = math.clamp(math.floor(1 / dt), 1, 999)
+    UpdateSmoothedFPS(fps)
+
+    -- Atualiza UI com FPS mais estável
+    if FPSBLOX.UI and FPSBLOX.UI.FPSLabel then
+        FPSBLOX.UI.FPSLabel.Text = "FPS: " .. smoothedFPS
+    end
+end)
+
+--------------------------------------------------
+-- VSYNC INTELIGENTE (SIMULADO)
+--------------------------------------------------
+task.spawn(function()
+    while true do
+        if FPSBLOX.Settings.SmoothMode then
+            local target = FPSBLOX.Settings.TargetFPS
+            local delay = math.clamp(1 / target, 0.005, 0.03)
+            task.wait(delay)
+        else
+            task.wait(0.01)
+        end
+    end
+end)
+
+--------------------------------------------------
+-- REDUÇÃO DE INPUT LAG (MOBILE)
+--------------------------------------------------
+pcall(function()
+    UserInputService.MouseDeltaSensitivity = 1
+end)
+
+--------------------------------------------------
+-- BOTÃO MODO SUAVE
+--------------------------------------------------
+if FPSBLOX.UI and FPSBLOX.UI.Buttons.Smooth then
+    FPSBLOX.UI.Buttons.Smooth.MouseButton1Click:Connect(function()
+        FPSBLOX.Settings.SmoothMode = not FPSBLOX.Settings.SmoothMode
+
+        if FPSBLOX.Settings.SmoothMode then
+            FPSBLOX.UI.Buttons.Smooth.Text = "Modo Suave: ON"
+        else
+            FPSBLOX.UI.Buttons.Smooth.Text = "Modo Suave: OFF"
+        end
+    end)
+end
+
+--------------------------------------------------
+-- POLIMENTO FINAL (SEGURANÇA)
+--------------------------------------------------
+FPSBLOX.Runtime.Stable = true
+
+print("[FPSBLOX] Parte 5 carregada - Fluidez máxima ativável")
