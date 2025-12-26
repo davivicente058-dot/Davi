@@ -738,3 +738,133 @@ TabSystem:CreateParagraph({
 -- ======================================================
 -- FIM DA PARTE 6
 -- ======================================================
+
+-- ======================================================
+-- FPSBLOX DEFINITIVO - PARTE 7
+-- Modo Gráficos Simples / Low Detail
+-- ======================================================
+
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+
+-- Estados
+local LowGraphicsEnabled = false
+
+-- Backup de configurações (seguro)
+local OriginalLighting = {
+    GlobalShadows = Lighting.GlobalShadows,
+    Brightness = Lighting.Brightness,
+    FogEnd = Lighting.FogEnd,
+    FogStart = Lighting.FogStart,
+    Technology = Lighting.Technology,
+    EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+    EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale
+}
+
+-- ======================================================
+-- 1. FUNÇÃO: REDUZIR DETALHES DO MAPA
+-- ======================================================
+
+local function applyLowGraphics()
+    -- Iluminação mais simples
+    Lighting.GlobalShadows = false
+    Lighting.Technology = Enum.Technology.Compatibility
+    Lighting.Brightness = math.clamp(Lighting.Brightness * 0.8, 1, 2)
+
+    Lighting.EnvironmentDiffuseScale = 0
+    Lighting.EnvironmentSpecularScale = 0
+
+    Lighting.FogStart = 0
+    Lighting.FogEnd = 150
+
+    -- Remove efeitos pesados
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        if effect:IsA("BloomEffect")
+        or effect:IsA("SunRaysEffect")
+        or effect:IsA("ColorCorrectionEffect")
+        or effect:IsA("DepthOfFieldEffect")
+        or effect:IsA("BlurEffect") then
+            effect.Enabled = false
+        end
+    end
+
+    -- Simplificação do mapa
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            -- Remove reflexos e suaviza render
+            obj.Material = Enum.Material.Plastic
+            obj.Reflectance = 0
+
+        elseif obj:IsA("Decal") or obj:IsA("Texture") then
+            obj.Transparency = math.clamp(obj.Transparency + 0.2, 0, 1)
+
+        elseif obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("Beam") then
+            obj.Enabled = false
+
+        elseif obj:IsA("PointLight")
+        or obj:IsA("SpotLight")
+        or obj:IsA("SurfaceLight") then
+            obj.Enabled = false
+        end
+    end
+end
+
+-- ======================================================
+-- 2. FUNÇÃO: RESTAURAR GRÁFICOS
+-- ======================================================
+
+local function restoreGraphics()
+    Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+    Lighting.Technology = OriginalLighting.Technology
+    Lighting.Brightness = OriginalLighting.Brightness
+    Lighting.FogEnd = OriginalLighting.FogEnd
+    Lighting.FogStart = OriginalLighting.FogStart
+    Lighting.EnvironmentDiffuseScale = OriginalLighting.EnvironmentDiffuseScale
+    Lighting.EnvironmentSpecularScale = OriginalLighting.EnvironmentSpecularScale
+
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        if effect:IsA("PostEffect") then
+            effect.Enabled = true
+        end
+    end
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("Beam")
+        or obj:IsA("PointLight")
+        or obj:IsA("SpotLight")
+        or obj:IsA("SurfaceLight") then
+            obj.Enabled = true
+        end
+    end
+end
+
+-- ======================================================
+-- 3. UI - GRÁFICOS SIMPLES
+-- ======================================================
+
+TabGraphics:CreateToggle({
+    Name = "Modo Gráficos Simples (FPS Boost)",
+    CurrentValue = false,
+    Callback = function(state)
+        LowGraphicsEnabled = state
+
+        if state then
+            applyLowGraphics()
+        else
+            restoreGraphics()
+        end
+    end
+})
+
+TabGraphics:CreateParagraph({
+    Title = "🎮 Gráficos Simplificados",
+    Content = "Remove detalhes visuais, sombras e luzes desnecessárias para aumentar FPS, ideal para celulares fracos."
+})
+
+-- ======================================================
+-- FIM DA PARTE 7
+-- ======================================================
