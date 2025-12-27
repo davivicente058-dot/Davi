@@ -1100,3 +1100,84 @@ end
 -- Exemplo de uso:
 -- SetCompetitiveMode(true)  -- ativa
 -- SetCompetitiveMode(false) -- desativa
+
+-- ================================
+-- SMOOTH FPS MODE (ANTI STUTTER)
+-- ================================
+
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+
+local SmoothMode = false
+
+-- Configurações finas
+local TARGET_FPS = 60
+local DROP_TOLERANCE = 12        -- queda aceitável
+local CHECK_RATE = 0.5           -- intervalo de checagem
+local TEMP_FOG = 180             -- fog temporária
+local NORMAL_FOG = Lighting.FogEnd
+
+-- Estados internos
+local lastFPS = TARGET_FPS
+local smoothingActive = false
+local lastCheck = tick()
+
+-- Função FPS real
+local function getFPS(delta)
+	return math.floor(1 / delta)
+end
+
+-- Aplicar suavização temporária
+local function applyTemporarySmoothing()
+	if smoothingActive then return end
+	smoothingActive = true
+
+	Lighting.FogEnd = TEMP_FOG
+	Lighting.GlobalShadows = false
+	Lighting.EnvironmentDiffuseScale = 0
+	Lighting.EnvironmentSpecularScale = 0
+
+	task.delay(1.2, function()
+		if SmoothMode then
+			Lighting.FogEnd = NORMAL_FOG
+		end
+		smoothingActive = false
+	end)
+end
+
+-- Loop inteligente (baixo custo)
+RunService.RenderStepped:Connect(function(dt)
+	if not SmoothMode then return end
+
+	if tick() - lastCheck < CHECK_RATE then return end
+	lastCheck = tick()
+
+	local currentFPS = getFPS(dt)
+
+	-- Detecta queda brusca
+	if lastFPS - currentFPS >= DROP_TOLERANCE then
+		applyTemporarySmoothing()
+	end
+
+	lastFPS = currentFPS
+end)
+
+-- ================================
+-- CONTROLE
+-- ================================
+function SetSmoothFPSMode(state)
+	SmoothMode = state
+
+	if not state then
+		Lighting.FogEnd = NORMAL_FOG
+		smoothingActive = false
+	end
+end
+
+-- ================================
+-- FIM DO SMOOTH MODE
+-- ================================
+
+-- Exemplo:
+-- SetSmoothFPSMode(true)
+-- SetSmoothFPSMode(false)
