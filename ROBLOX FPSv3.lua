@@ -1001,128 +1001,102 @@ TabGraphics:CreateParagraph({
 -- FIM DO CONTROLE DE SOMBRAS
 -- ======================================================
 
--- ======================================================
--- FPSBLOX - MODO COMPETITIVO ULTRA (Mira OFF)
--- ======================================================
+-- ================================
+-- MODO COMPETITIVO DEFINITIVO
+-- EXTREMAMENTE OTIMIZADO
+-- ================================
 
-local function ApplyCompetitiveUltra()
-    local Players = game:GetService("Players")
-    local Workspace = game:GetService("Workspace")
-    local Lighting = game:GetService("Lighting")
-    local RunService = game:GetService("RunService")
-    local LocalPlayer = Players.LocalPlayer
-    local Camera = Workspace.CurrentCamera
+local CompetitiveMode = false
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
-    if not LocalPlayer or not Camera then
-        warn("[FPSBLOX] LocalPlayer ou Camera não encontrados.")
-        return
-    end
+-- Guarda valores originais pra restaurar depois
+local OriginalSettings = {
+	GlobalShadows = Lighting.GlobalShadows,
+	Brightness = Lighting.Brightness,
+	FogEnd = Lighting.FogEnd,
+	EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+	EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale
+}
 
-    -- =====================
-    -- CONFIGURAÇÕES GLOBAIS
-    -- =====================
-    _G.FPSBLOX_SETTINGS = _G.FPSBLOX_SETTINGS or {}
-    _G.FPSBLOX_SETTINGS.Mode = "CompetitivoUltra"
-    _G.FPSBLOX_SETTINGS.Mira = false
-    _G.FPSBLOX_SETTINGS.Optimization = true
-    _G.FPSBLOX_SETTINGS.Shadows = false
-    _G.FPSBLOX_SETTINGS.RenderDistance = "Baixo"
-    _G.FPSBLOX_SETTINGS.VSync = false
+-- Função principal
+local function SetCompetitiveMode(state)
+	CompetitiveMode = state
 
-    -- =====================
-    -- OTIMIZAÇÃO DE PARTES
-    -- =====================
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        pcall(function()
-            if obj:IsA("BasePart") then
-                obj.Material = Enum.Material.SmoothPlastic
-                obj.Reflectance = 0
-                obj.CastShadow = false
-            elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                obj.Transparency = 1
-            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-                obj.Enabled = false
-            end
-        end)
-    end
+	if state then
+		-- ========= LUZES =========
+		Lighting.GlobalShadows = false
+		Lighting.Brightness = 1
+		Lighting.FogEnd = 250
+		Lighting.EnvironmentDiffuseScale = 0
+		Lighting.EnvironmentSpecularScale = 0
 
-    -- =====================
-    -- OTIMIZAÇÃO DE LUZES
-    -- =====================
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 100000
-    Lighting.Ambient = Color3.fromRGB(25,25,25)
-    Lighting.OutdoorAmbient = Color3.fromRGB(25,25,25)
-    Lighting.Brightness = 0.12
-    Lighting.ClockTime = 14
+		-- ========= DESATIVA EFEITOS =========
+		for _,v in pairs(Lighting:GetChildren()) do
+			if v:IsA("BlurEffect")
+			or v:IsA("SunRaysEffect")
+			or v:IsA("BloomEffect")
+			or v:IsA("ColorCorrectionEffect")
+			or v:IsA("DepthOfFieldEffect") then
+				v.Enabled = false
+			end
+		end
 
-    -- =====================
-    -- POST-PROCESS
-    -- =====================
-    for _, effect in ipairs(Lighting:GetChildren()) do
-        pcall(function()
-            if effect:IsA("BlurEffect") or effect:IsA("BloomEffect") or
-               effect:IsA("ColorCorrectionEffect") or effect:IsA("SunRaysEffect") then
-                effect.Enabled = false
-            end
-        end)
-    end
+		-- ========= MAPA =========
+		for _,obj in pairs(workspace:GetDescendants()) do
+			if obj:IsA("BasePart") then
+				obj.CastShadow = false
+				obj.Material = Enum.Material.Plastic
+				obj.Reflectance = 0
 
-    -- =====================
-    -- NÉVOA / SIMPLIFICAÇÃO VISUAL
-    -- =====================
-    if not Workspace:FindFirstChild("FPSBLOX_Fog") then
-        local fog = Instance.new("Part")
-        fog.Name = "FPSBLOX_Fog"
-        fog.Anchored = true
-        fog.CanCollide = false
-        fog.Size = Vector3.new(10000,10000,10000)
-        fog.Position = Camera.CFrame.Position
-        fog.Material = Enum.Material.SmoothPlastic
-        fog.Color = Color3.fromRGB(25,25,25)
-        fog.Transparency = 0.85
-        fog.Parent = Workspace
-    end
+			elseif obj:IsA("Decal") or obj:IsA("Texture") then
+				obj.Transparency = 1
 
-    Camera.FieldOfView = 70
+			elseif obj:IsA("ParticleEmitter")
+			or obj:IsA("Trail")
+			or obj:IsA("Smoke")
+			or obj:IsA("Fire") then
+				obj.Enabled = false
+			end
+		end
 
-    -- =====================
-    -- DESABILITA MIRA
-    -- =====================
-    if _G.FPSBLOX_UI and _G.FPSBLOX_UI.MiraFrame then
-        _G.FPSBLOX_UI.MiraFrame.Visible = false
-    end
+		-- ========= PERSONAGENS =========
+		RunService:BindToRenderStep("CompetitiveCharacterOptimize", Enum.RenderPriority.Character.Value, function()
+			if not CompetitiveMode then return end
 
-    -- =====================
-    -- REDUÇÃO DE INPUT LAG
-    -- =====================
-    if _G.FPSBLOX_SETTINGS._SteppedConnection then
-        _G.FPSBLOX_SETTINGS._SteppedConnection:Disconnect()
-    end
-    _G.FPSBLOX_SETTINGS._SteppedConnection = RunService.Stepped:Connect(function()
-        -- atualizações pesadas removidas, apenas essencial
-    end)
+			for _,plr in pairs(Players:GetPlayers()) do
+				if plr.Character then
+					for _,part in pairs(plr.Character:GetDescendants()) do
+						if part:IsA("BasePart") then
+							part.Material = Enum.Material.Plastic
+							part.CastShadow = false
+							part.Reflectance = 0
+						elseif part:IsA("Decal") then
+							part.Transparency = 1
+						end
+					end
+				end
+			end
+		end)
 
-    -- =====================
-    -- ATUALIZA UI
-    -- =====================
-    if _G.FPSBLOX_UI and _G.FPSBLOX_UI.ModeLabel then
-        _G.FPSBLOX_UI.ModeLabel.Text = "Modo: Competitivo Ultra (Mira OFF)"
-    end
+	else
+		-- ========= RESTAURA =========
+		Lighting.GlobalShadows = OriginalSettings.GlobalShadows
+		Lighting.Brightness = OriginalSettings.Brightness
+		Lighting.FogEnd = OriginalSettings.FogEnd
+		Lighting.EnvironmentDiffuseScale = OriginalSettings.EnvironmentDiffuseScale
+		Lighting.EnvironmentSpecularScale = OriginalSettings.EnvironmentSpecularScale
 
-    print("[FPSBLOX] Modo Competitivo Ultra (Mira OFF) ativado com sucesso!")
+		RunService:UnbindFromRenderStep("CompetitiveCharacterOptimize")
+	end
 end
 
--- =====================
--- BOTÃO NA UI
--- =====================
-if TabSettings then
-    TabSettings:CreateButton({
-        Name = "🏆 Competitivo Ultra (Mira OFF)",
-        Callback = function()
-            ApplyCompetitiveUltra()
-        end
-    })
-end
+-- ================================
+-- FIM DO MODO COMPETITIVO
+-- ================================
 
--- Fim do Modo Competitivo
+-- Exemplo de uso:
+-- SetCompetitiveMode(true)  -- ativa
+-- SetCompetitiveMode(false) -- desativa
