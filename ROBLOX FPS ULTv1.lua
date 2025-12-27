@@ -1,142 +1,155 @@
---[[ 
-=====================================================
- FPSBLOX DEFINITIVO - PARTE 1
- Base do Script + Estrutura Global
- Compatível com Mobile / PC
- Preparado para múltiplas partes
-=====================================================
-]]
+-- ===============================
+-- RAYFIELD UI LIBRARY
+-- ===============================
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
--- ===== SEGURANÇA GLOBAL =====
+-- ===============================
+-- FPSBLOX DEFINITIVO - PARTE 1
+-- UI PRINCIPAL (RAYFIELD)
+-- ===============================
+
 _G.FPSBLOX = _G.FPSBLOX or {}
 local FPSBLOX = _G.FPSBLOX
 
--- Evita reinicialização dupla
-if FPSBLOX.__LOADED then
-    warn("[FPSBLOX] Script já carregado.")
-    return
-end
-FPSBLOX.__LOADED = true
+-- ===== JANELA PRINCIPAL =====
+local Window = Rayfield:CreateWindow({
+   Name = "FPSBLOX DEFINITIVO",
+   LoadingTitle = "FPSBLOX",
+   LoadingSubtitle = "Otimização Avançada",
+   ConfigurationSaving = {
+      Enabled = false -- você vai fazer save depois
+   },
+   Discord = {
+      Enabled = false
+   },
+   KeySystem = false
+})
 
--- ===== SERVIÇOS =====
-local Players        = game:GetService("Players")
-local RunService     = game:GetService("RunService")
-local Lighting       = game:GetService("Lighting")
-local UserInput      = game:GetService("UserInputService")
-local Workspace      = game:GetService("Workspace")
-local Stats          = game:GetService("Stats")
-local TweenService   = game:GetService("TweenService")
+-- ===== ABAS =====
+local TabFPS = Window:CreateTab("📊 FPS", 4483362458)
+local TabOpt = Window:CreateTab("🚀 Otimização", 4483362458)
+local TabGraf = Window:CreateTab("🎮 Gráficos", 4483362458)
+local TabComp = Window:CreateTab("🏆 Competitivo", 4483362458)
+local TabAdv = Window:CreateTab("⚙ Avançado", 4483362458)
 
-local LocalPlayer = Players.LocalPlayer
-if not LocalPlayer then
-    warn("[FPSBLOX] LocalPlayer não encontrado.")
-    return
-end
+-- ===== SEÇÃO FPS =====
+TabFPS:CreateSection("Monitoramento")
 
--- ===== CONFIGURAÇÕES GLOBAIS =====
-FPSBLOX.Config = {
-    ScriptName = "FPSBLOX DEFINITIVO",
-    Version = "5.0",
-    MobilePriority = true,
-}
+TabFPS:CreateParagraph({
+   Title = "FPSBLOX",
+   Content = "Script de otimização avançada focado em celulares fracos e estabilidade real de FPS."
+})
 
--- ===== ESTADO GLOBAL =====
-FPSBLOX.State = {
-    OptimizationsEnabled = false,
-    CompetitiveMode = false,
-    SmoothMode = false,
-    DeviceTier = "Unknown",
-}
+-- FPS Label será controlado por outra parte
+FPSBLOX.FPSLabelEnabled = true
 
--- ===== TABELAS DE BACKUP (RESTORE FUTURO) =====
-FPSBLOX.Backup = {
-    Lighting = {},
-    Parts = {},
-    Effects = {},
-}
+TabFPS:CreateToggle({
+   Name = "Mostrar FPS",
+   CurrentValue = true,
+   Callback = function(v)
+      FPSBLOX.FPSLabelEnabled = v
+   end
+})
 
--- ===== FUNÇÕES UTILITÁRIAS =====
-FPSBLOX.Utils = {}
+-- ===== SEÇÃO OTIMIZAÇÃO =====
+TabOpt:CreateSection("Otimização Geral")
 
-function FPSBLOX.Utils.SafeCall(fn)
-    local ok, err = pcall(fn)
-    if not ok then
-        warn("[FPSBLOX ERROR]:", err)
-    end
-end
+TabOpt:CreateToggle({
+   Name = "Otimização Geral",
+   CurrentValue = false,
+   Callback = function(v)
+      if FPSBLOX.SetOptimization then
+         FPSBLOX:SetOptimization(v)
+      end
+   end
+})
 
-function FPSBLOX.Utils.Round(num)
-    return math.floor(num + 0.5)
-end
+TabOpt:CreateDropdown({
+   Name = "Nível de Otimização",
+   Options = {"Leve", "Equilibrado", "Agressivo"},
+   CurrentOption = "Equilibrado",
+   Callback = function(opt)
+      FPSBLOX.OptimizationLevel = opt
+   end
+})
 
-function FPSBLOX.Utils.Clamp(v, min, max)
-    return math.max(min, math.min(max, v))
-end
+-- ===== SEÇÃO GRÁFICOS =====
+TabGraf:CreateSection("Iluminação")
 
--- ===== DETECÇÃO DE DISPOSITIVO =====
-FPSBLOX.Device = {}
+TabGraf:CreateDropdown({
+   Name = "Modo de Iluminação",
+   Options = {"Claro", "Padrão", "Escuro Suave"},
+   CurrentOption = "Padrão",
+   Callback = function(opt)
+      if FPSBLOX.SetLightingMode then
+         FPSBLOX:SetLightingMode(opt)
+      end
+   end
+})
 
-function FPSBLOX.Device:IsMobile()
-    return UserInput.TouchEnabled and not UserInput.KeyboardEnabled
-end
+TabGraf:CreateToggle({
+   Name = "Reduzir Sombras",
+   CurrentValue = false,
+   Callback = function(v)
+      if FPSBLOX.SetShadows then
+         FPSBLOX:SetShadows(v)
+      end
+   end
+})
 
-function FPSBLOX.Device:GetHz()
-    if RunService.RenderStepped then
-        return math.floor(1 / RunService.RenderStepped:Wait())
-    end
-    return 60
-end
+-- ===== SEÇÃO COMPETITIVO =====
+TabComp:CreateSection("Modo Competitivo")
 
-function FPSBLOX.Device:DetectTier()
-    local fpsSamples = {}
-    local start = tick()
+TabComp:CreateToggle({
+   Name = "Modo Competitivo EXTREMO",
+   CurrentValue = false,
+   Callback = function(v)
+      if FPSBLOX.SetCompetitiveMode then
+         FPSBLOX:SetCompetitiveMode(v)
+      end
+   end
+})
 
-    while tick() - start < 1 do
-        table.insert(fpsSamples, 1 / RunService.RenderStepped:Wait())
-    end
+TabComp:CreateToggle({
+   Name = "Desativar Mira (Competitivo)",
+   CurrentValue = false,
+   Callback = function(v)
+      if FPSBLOX.SetCrosshair then
+         FPSBLOX:SetCrosshair(not v)
+      end
+   end
+})
 
-    local avg = 0
-    for _, f in ipairs(fpsSamples) do
-        avg += f
-    end
-    avg /= #fpsSamples
+-- ===== AVANÇADO =====
+TabAdv:CreateSection("Sistema")
 
-    if avg < 40 then
-        return "Low"
-    elseif avg < 60 then
-        return "Mid"
-    else
-        return "High"
-    end
-end
+TabAdv:CreateToggle({
+   Name = "Perfil Automático",
+   CurrentValue = true,
+   Callback = function(v)
+      if FPSBLOX.SetAutoProfile then
+         FPSBLOX:SetAutoProfile(v)
+      end
+   end
+})
 
-FPSBLOX.State.DeviceTier = FPSBLOX.Device:DetectTier()
+TabAdv:CreateToggle({
+   Name = "Estabilidade Inteligente",
+   CurrentValue = true,
+   Callback = function(v)
+      if FPSBLOX.SetStabilityLock then
+         FPSBLOX:SetStabilityLock(v)
+      end
+   end
+})
 
--- ===== SISTEMA DE EVENTOS INTERNOS =====
-FPSBLOX.Events = {}
+Rayfield:Notify({
+   Title = "FPSBLOX",
+   Content = "Interface carregada com sucesso",
+   Duration = 4
+})
 
-function FPSBLOX.Events:Create(name)
-    self[name] = Instance.new("BindableEvent")
-end
-
-FPSBLOX.Events:Create("OnOptimizationEnabled")
-FPSBLOX.Events:Create("OnOptimizationDisabled")
-FPSBLOX.Events:Create("OnCompetitiveEnabled")
-FPSBLOX.Events:Create("OnCompetitiveDisabled")
-
--- ===== LOG DE INICIALIZAÇÃO =====
-print("===================================")
-print(" FPSBLOX DEFINITIVO INICIADO")
-print(" Versão:", FPSBLOX.Config.Version)
-print(" Dispositivo:", FPSBLOX.Device:IsMobile() and "Mobile" or "PC")
-print(" Tier:", FPSBLOX.State.DeviceTier)
-print("===================================")
-
--- ===== GARANTIA DE CONTINUIDADE =====
--- As próximas partes apenas irão EXTENDER este sistema
--- Nada aqui será sobrescrito
-
--- FIM DA PARTE 1
+-- ===== FIM DA PARTE 1 =====
 
 --[[ 
 =====================================================
