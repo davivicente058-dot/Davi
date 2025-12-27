@@ -1,117 +1,80 @@
---[[ 
-    ROBLOX FPS - DEFINITIVE CORE
-    UI: Rayfield (Shlexware)
-    Mobile-first | Ultra otimizado
---]]
+--// =====================================
+--// ROBLOX FPS - PARTE 0
+--// UI LIBRARY + BASE GLOBAL
+--// =====================================
 
--- Evita executar duas vezes
-if getgenv().ROBLOX_FPS_LOADED then return end
-getgenv().ROBLOX_FPS_LOADED = true
+-- >>> BIBLIOTECA UI (RAYFIELD) <<<
+local Rayfield = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/shlexware/Rayfield/main/source.lua"
+))()
 
--- ===== Serviços essenciais (sem excessos) =====
+-- Esperar jogo carregar
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+-- Serviços
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
-local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-
 local LocalPlayer = Players.LocalPlayer
 
--- ===== CORE GLOBAL =====
-getgenv().FPS_CORE = {
-    Flags = {},
-    Connections = {},
-    Cache = {},
-    FPS = 0,
-    Device = "PC"
-}
-local CORE = getgenv().FPS_CORE
+-- Log de debug
+warn("[ROBLOX FPS] Biblioteca Rayfield carregada")
 
--- ===== Detecção de dispositivo =====
-do
-    local platform = UserInputService:GetPlatform()
-    if platform == Enum.Platform.Android or platform == Enum.Platform.IOS then
-        CORE.Device = "Mobile"
-    end
-end
-
--- ===== Funções utilitárias seguras =====
-function CORE:SetFlag(name, value)
-    self.Flags[name] = value
-end
-
-function CORE:GetFlag(name)
-    return self.Flags[name] == true
-end
-
-function CORE:Connect(signal, func)
-    local c = signal:Connect(func)
-    table.insert(self.Connections, c)
-    return c
-end
-
-function CORE:ClearConnections()
-    for _, c in ipairs(self.Connections) do
-        pcall(function() c:Disconnect() end)
-    end
-    table.clear(self.Connections)
-end
-
-function CORE:Safe(func)
-    local ok, err = pcall(func)
-    if not ok then
-        warn("[ROBLOX FPS ERROR]:", err)
-    end
-end
-
--- ===== FPS REAL (estável, sem bug) =====
-do
-    local frames = 0
-    local lastTick = tick()
-
-    RunService.RenderStepped:Connect(function()
-        frames += 1
-        if tick() - lastTick >= 1 then
-            CORE.FPS = frames
-            frames = 0
-            lastTick = tick()
-        end
-    end)
-end
-
--- ===== RAYFIELD UI (OFICIAL / LEVE) =====
-local Rayfield = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/shlexware/Rayfield/main/source"
-))()
-
+-- Criar janela
 local Window = Rayfield:CreateWindow({
-    Name = "ROBLOX FPS - Definitivo",
+    Name = "ROBLOX FPS",
     LoadingTitle = "ROBLOX FPS",
-    LoadingSubtitle = "Mobile First Optimizer",
+    LoadingSubtitle = "Remake",
     ConfigurationSaving = {
         Enabled = false
     },
     KeySystem = false
 })
 
--- ===== TABS =====
-local Tabs = {
-    FPS = Window:CreateTab("⚡ FPS", 4483362458),
-    Graphics = Window:CreateTab("🎮 Gráficos", 4483362458),
-    Competitive = Window:CreateTab("🏆 Competitivo", 4483362458),
-    Advanced = Window:CreateTab("🧠 Avançado", 4483362458)
+-- CORE GLOBAL (todas as partes usam isso)
+getgenv().FPS_CORE = {
+    Flags = {},
+    Cache = {},
+    Connections = {},
+    State = {},
+    Tabs = {},
+    FPS = 0,
+    LastFrame = tick(),
 }
 
-CORE.Tabs = Tabs
+local CORE = getgenv().FPS_CORE
 
+-- Criar abas base
+CORE.Tabs.Main = Window:CreateTab("Principal")
+CORE.Tabs.Optimization = Window:CreateTab("Otimização")
+CORE.Tabs.Graphics = Window:CreateTab("Gráficos")
+CORE.Tabs.Competitive = Window:CreateTab("Competitivo")
+CORE.Tabs.Info = Window:CreateTab("Info")
+
+-- Funções utilitárias globais
+function CORE:SetFlag(name, value)
+    self.Flags[name] = value
+end
+
+function CORE:GetFlag(name)
+    return self.Flags[name]
+end
+
+-- Confirmação visual
 Rayfield:Notify({
     Title = "ROBLOX FPS",
-    Content = "Base Rayfield carregada com sucesso",
+    Content = "UI carregada com sucesso",
     Duration = 3
 })
 
--- ===== FIM DA BASE =====
--- Próxima parte: PARTE 1 (Otimização real de engine)
+warn("[ROBLOX FPS] PARTE 0 FINALIZADA COM SUCESSO")
+
+--// =====================================
+--// FIM DA PARTE 0
+--// =====================================
 
 --// ===============================
 --// PARTE 1 - OTIMIZAÇÃO BASE
