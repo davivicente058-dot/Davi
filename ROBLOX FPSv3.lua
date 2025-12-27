@@ -948,3 +948,55 @@ TabGraphics:CreateParagraph({
 -- ======================================================
 -- FIM DA PARTE 8
 -- ======================================================
+
+-- ======================================================
+-- FPSBLOX - CONTROLE DE SOMBRAS (NOVA OPÇÃO)
+-- ======================================================
+
+local Lighting = game:GetService("Lighting")
+
+-- Backup original
+local OriginalShadows = {
+    GlobalShadows = Lighting.GlobalShadows,
+    ShadowSoftness = Lighting.ShadowSoftness
+}
+
+local function setShadows(mode)
+    if mode == "Alta" then
+        Lighting.GlobalShadows = true
+        Lighting.ShadowSoftness = 1
+
+    elseif mode == "Média" then
+        Lighting.GlobalShadows = true
+        Lighting.ShadowSoftness = 0.5
+
+    elseif mode == "Baixa" then
+        Lighting.GlobalShadows = true
+        Lighting.ShadowSoftness = 0.1
+
+    elseif mode == "Desligada" then
+        Lighting.GlobalShadows = false
+    end
+end
+
+-- ======================================================
+-- UI - OPÇÃO DE SOMBRAS
+-- ======================================================
+
+TabGraphics:CreateDropdown({
+    Name = "Qualidade das Sombras",
+    Options = {"Alta", "Média", "Baixa", "Desligada"},
+    CurrentOption = "Média",
+    Callback = function(option)
+        setShadows(option)
+    end
+})
+
+TabGraphics:CreateParagraph({
+    Title = "🌑 Sombras",
+    Content = "Reduz o peso das sombras para ganhar FPS. Em celulares fracos, use Baixa ou Desligada."
+})
+
+-- ======================================================
+-- FIM DO CONTROLE DE SOMBRAS
+-- ======================================================
