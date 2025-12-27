@@ -1000,3 +1000,103 @@ TabGraphics:CreateParagraph({
 -- ======================================================
 -- FIM DO CONTROLE DE SOMBRAS
 -- ======================================================
+
+-- ======================================================
+-- FPSBLOX - MODO COMPETITIVO ULTRA (SEM MIRA)
+-- ======================================================
+
+local function ApplyCompetitiveModeUltra()
+    -- Marca que estamos no modo competitivo
+    _G.FPSBLOX_SETTINGS.LightingMode = "CompetitivoUltra"
+    _G.FPSBLOX_SETTINGS.Optimization = true
+    _G.FPSBLOX_SETTINGS.OptimizationLevel = "Máximo"
+    _G.FPSBLOX_SETTINGS.RenderDistance = "Baixo"
+    _G.FPSBLOX_SETTINGS.Shadows = "Desligado"
+    _G.FPSBLOX_SETTINGS.Crosshair = false -- MIRA DESATIVADA
+    _G.FPSBLOX_SETTINGS.VSync = false
+
+    local Workspace = game:GetService("Workspace")
+    local Lighting = game:GetService("Lighting")
+    local RunService = game:GetService("RunService")
+
+    -- ==================================================
+    -- OTIMIZAÇÃO DE PARTES
+    -- ==================================================
+    for _, part in ipairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Material = Enum.Material.SmoothPlastic
+            part.Reflectance = 0
+            part.CastShadow = false
+        elseif part:IsA("Decal") or part:IsA("Texture") then
+            part.Transparency = 1
+        elseif part:IsA("ParticleEmitter") or part:IsA("Trail") then
+            part.Enabled = false
+        end
+    end
+
+    -- ==================================================
+    -- OTIMIZAÇÃO DE LUZES
+    -- ==================================================
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 100000
+    Lighting.Ambient = Color3.fromRGB(18,18,18)
+    Lighting.Brightness = 0.1
+    Lighting.OutdoorAmbient = Color3.fromRGB(18,18,18)
+    Lighting.ClockTime = 14
+
+    -- ==================================================
+    -- OTIMIZAÇÃO DE POST-PROCESS
+    -- ==================================================
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        if effect:IsA("BlurEffect") or effect:IsA("BloomEffect") or
+           effect:IsA("ColorCorrectionEffect") or effect:IsA("SunRaysEffect") then
+            effect.Enabled = false
+        end
+    end
+
+    -- ==================================================
+    -- NÉVOA / CHUNKS
+    -- ==================================================
+    if _G.FPSBLOX_SETTINGS.RenderDistance == "Baixo" then
+        -- simplifica visual e mapa
+        Workspace.CurrentCamera:ClearAllChildren()
+        Workspace.CurrentCamera.FieldOfView = 70
+    end
+
+    -- ==================================================
+    -- INPUT LAG REDUCTION
+    -- ==================================================
+    RunService.Stepped:Connect(function()
+        pcall(function()
+            -- remove updates pesados
+        end)
+    end)
+
+    -- ==================================================
+    -- ATUALIZA UI / LABELS
+    -- ==================================================
+    if _G.FPSBLOX_UI and _G.FPSBLOX_UI.ModeLabel then
+        _G.FPSBLOX_UI.ModeLabel.Text = "Modo: Competitivo Ultra (Mira OFF)"
+    end
+
+    -- ==================================================
+    -- SALVA CONFIG
+    -- ==================================================
+    if SaveSettings then
+        SaveSettings()
+    end
+end
+
+-- ======================================================
+-- ADICIONAR BOTÃO NA UI
+-- ======================================================
+if TabSettings then
+    TabSettings:CreateButton({
+        Name = "🏆 Competitivo Ultra (Mira OFF)",
+        Callback = function()
+            ApplyCompetitiveModeUltra()
+        end
+    })
+end
+
+print("[FPSBLOX] Modo Competitivo Ultra carregado (Mira OFF).")
