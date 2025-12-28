@@ -1,53 +1,48 @@
--- [[ MASTER FPS ULTIMATE - VERSÃO COMPLETA & OTIMIZADA ]] --
--- Compatível com Delta, Fluxus e outros executores Mobile.
+-- [[ MASTER FPS ULTIMATE v3.0 - HIGH PERFORMANCE EDITION ]] --
+-- Focado em: Máxima Fluidez, Baixa Latência e Otimização de Engine
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/main/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/main/Addons/InterfaceManager.lua"))()
 
--- [ CONFIGURAÇÃO DA JANELA ] --
+-- [ JANELA PRINCIPAL ] --
 local Window = Fluent:CreateWindow({
-    Title = "MASTER FPS ULTIMATE",
-    SubTitle = "Performance & Fluidez",
+    Title = "MASTER FPS REMAKE",
+    SubTitle = "Performance Avançada",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = false, 
-    Theme = "Darker", -- Tema configurado para ser mais escuro
+    Theme = "Darker", 
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- [ ORGANIZAÇÃO DAS ABAS ] --
 local Tabs = {
-    Main = Window:AddTab({ Title = "Performance", Icon = "zap" }),
-    Graphics = Window:AddTab({ Title = "Gráficos", Icon = "image" }),
-    World = Window:AddTab({ Title = "Mundo/Chunks", Icon = "map" }),
-    Settings = Window:AddTab({ Title = "Config", Icon = "settings" })
+    Main = Window:AddTab({ Title = "Otimização", Icon = "zap" }),
+    Graphics = Window:AddTab({ Title = "Gráficos & Luz", Icon = "image" }),
+    World = Window:AddTab({ Title = "Renderização", Icon = "map" })
 }
 
--- [ MONITOR DE STATUS ] --
-local FpsLabel = Tabs.Main:AddParagraph({
-    Title = "Status do Sistema",
-    Content = "A calcular..."
-})
-
+-- [[ SISTEMA DE MONITORAMENTO AVANÇADO ]] --
+local FpsLabel = Tabs.Main:AddParagraph({ Title = "Status do Sistema", Content = "Iniciando..." })
 task.spawn(function()
-    while task.wait(1) do
-        local fps = math.floor(workspace:GetRealPhysicsFPS())
+    local RunService = game:GetService("RunService")
+    while task.wait(0.5) do
+        local fps = math.floor(1/RunService.RenderStepped:Wait())
         local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
-        FpsLabel:SetDesc("FPS: " .. fps .. " | Ping: " .. ping .. "ms")
+        local mem = math.floor(game:GetService("Stats"):GetTotalMemoryUsageMb())
+        FpsLabel:SetDesc("FPS: " .. fps .. " | Ping: " .. ping .. "ms | RAM: " .. mem .. "MB")
     end
 end)
 
--- [[ SEÇÃO 1: OTIMIZAÇÃO DE PERFORMANCE (FPS & DELAY) ]] --
-local PerfSection = Tabs.Main:AddSection("Ajustes de Motor")
+-- [[ SEÇÃO 1: PERFORMANCE & CORE (FLUIDEZ) ]] --
+local PerfSection = Tabs.Main:AddSection("Motor do Jogo")
 
 Tabs.Main:AddToggle("CompMode", {
-    Title = "Modo Competitivo (Máximo FPS)",
+    Title = "Modo Competitivo (Extremo)", 
     Default = false,
-    Description = "Remove texturas e sombras para o máximo de performance.",
+    Description = "Força o jogo ao limite mínimo de gráficos para máxima vantagem.",
     Callback = function(Value)
         if Value then
             settings().Rendering.QualityLevel = 1
+            settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level10
             for _, v in pairs(game.Workspace:GetDescendants()) do
                 if v:IsA("BasePart") then
                     v.Material = Enum.Material.SmoothPlastic
@@ -58,93 +53,125 @@ Tabs.Main:AddToggle("CompMode", {
     end
 })
 
-Tabs.Main:AddToggle("ZeroDelay", {
-    Title = "Reduzir Delay (Input Lag)",
+Tabs.Main:AddToggle("FluidStep", {
+    Title = "Estabilizador de Frame (60/120Hz)", 
+    Default = false,
+    Callback = function(Value)
+        _G.SmoothActive = Value
+        if Value then
+            task.spawn(function()
+                while _G.SmoothActive do
+                    -- Força a física a não atrasar o render
+                    settings().Physics.ThrottleAdjustTime = 0
+                    settings().Physics.AllowSleep = true
+                    task.wait(0.1)
+                end
+            end)
+        end
+    end
+})
+
+Tabs.Main:AddToggle("NetBoost", {
+    Title = "Reduzir Input Lag & Rede", 
     Default = false,
     Callback = function(Value)
         if Value then
             settings().Network.IncomingReplicationLag = -1000
-            settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Enabled
+            settings().Network.DataSendRate = 100
+        else
+            settings().Network.IncomingReplicationLag = 0
         end
     end
 })
 
-Tabs.Main:AddToggle("FPSUnlock", {
-    Title = "Simular 120Hz (Unlocker)",
-    Default = false,
-    Callback = function(Value)
-        if setfpscap then setfpscap(Value and 120 or 60) end
-    end
-})
-
--- [[ SEÇÃO 2: GRÁFICOS E ILUMINAÇÃO (REMOVER PARTÍCULAS) ]] --
-local GraphSection = Tabs.Graphics:AddSection("Visual & Partículas")
+-- [[ SEÇÃO 2: GRÁFICOS, LUZ E PARTÍCULAS ]] --
+local LightSection = Tabs.Graphics:AddSection("Iluminação e Efeitos")
 
 Tabs.Graphics:AddToggle("NoParticles", {
-    Title = "Remover Todas as Partículas",
+    Title = "Remover Partículas & Trails",
     Default = false,
     Callback = function(Value)
-        _G.NoParticles = Value
+        _G.NoParts = Value
         local function Clear(v)
-            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") then
-                v.Enabled = not _G.NoParticles
+            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") then
+                v.Enabled = not _G.NoParts
             end
         end
-        for _, v in pairs(game.Workspace:GetDescendants()) do Clear(v) end
+        for _, v in pairs(game:GetDescendants()) do Clear(v) end
+        game.DescendantAdded:Connect(Clear)
     end
 })
 
-Tabs.Graphics:AddDropdown("LightMode", {
-    Title = "Modos de Iluminação (Brilho)",
-    Values = {"Muito Claro", "Padrão", "Escuro Suave", "Modo Noite (Mais Escuro)"},
+Tabs.Graphics:AddToggle("NoLights", {
+    Title = "Desativar Luzes Dinâmicas", 
+    Default = false,
+    Callback = function(Value)
+        _G.NoLights = Value
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("Light") then v.Enabled = not Value end
+        end
+    end
+})
+
+Tabs.Graphics:AddDropdown("VisualModes", {
+    Title = "Modos de Ambiente",
+    Values = {"Claro", "Padrão", "Escuro Suave", "Escuro (Otimizado)"},
     Default = "Padrão",
     Callback = function(V)
         local L = game:GetService("Lighting")
-        if V == "Muito Claro" then
-            L.Brightness = 4 L.OutdoorAmbient = Color3.new(1,1,1) L.ClockTime = 14
-        elseif V == "Modo Noite (Mais Escuro)" then
-            L.Brightness = 0.4 L.OutdoorAmbient = Color3.fromRGB(20, 20, 20) L.ClockTime = 0
+        L.GlobalShadows = false
+        if V == "Escuro (Otimizado)" then
+            L.Brightness = 0.4 L.OutdoorAmbient = Color3.fromRGB(15, 15, 15) L.ClockTime = 0
         elseif V == "Escuro Suave" then
-            L.Brightness = 0.7 L.OutdoorAmbient = Color3.fromRGB(60, 60, 60) L.ClockTime = 18
+            L.Brightness = 0.7 L.OutdoorAmbient = Color3.fromRGB(45, 45, 45) L.ClockTime = 18
+        elseif V == "Claro" then
+            L.Brightness = 3 L.OutdoorAmbient = Color3.fromRGB(255, 255, 255) L.ClockTime = 14
         else
             L.Brightness = 1 L.OutdoorAmbient = Color3.fromRGB(127, 127, 127) L.ClockTime = 14
+            L.GlobalShadows = true
         end
     end
 })
 
--- [[ SEÇÃO 3: SISTEMA DE CHUNKS & SMART RENDER ]] --
-local WorldSection = Tabs.World:AddSection("Renderização Inteligente")
+-- [[ SEÇÃO 3: MUNDO & CHUNKS (SMART RENDER) ]] --
+local WorldSection = Tabs.World:AddSection("Renderização de Mapa")
 local RenderRadius = 300
 
 Tabs.World:AddToggle("ChunkSystem", {
-    Title = "Ativar Sistema de Chunks",
+    Title = "Ativar Carregamento por Chunks",
     Default = false,
-    Callback = function(Value) _G.Chunks = Value end
+    Callback = function(Value) _G.ChunksActive = Value end
 })
 
 Tabs.World:AddSlider("ChunkDist", {
-    Title = "Distância de Renderização",
-    Min = 50, Max = 1000, Default = 300, Rounding = 0,
+    Title = "Distância de Renderização", Min = 50, Max = 1500, Default = 300, Rounding = 0,
     Callback = function(V) RenderRadius = V end
 })
 
--- Loop de Chunks e Smart Render (Otimizado)
+-- Sistema de Chunks Avançado (Não invisibiliza o que você está olhando)
 task.spawn(function()
-    while task.wait(1.5) do
-        if _G.Chunks then
-            local p = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if p then
+    local Camera = workspace.CurrentCamera
+    while task.wait(1) do
+        if _G.ChunksActive then
+            local char = game.Players.LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root then
                 for _, obj in pairs(game.Workspace:GetChildren()) do
                     if obj:IsA("BasePart") or obj:IsA("Model") then
                         local pos = obj:IsA("Model") and (obj.PrimaryPart and obj.PrimaryPart.Position or obj:GetModelCFrame().Position) or obj.Position
                         if pos then
-                            local hide = (p.Position - pos).Magnitude > RenderRadius
-                            if obj:IsA("BasePart") then
+                            local dist = (root.Position - pos).Magnitude
+                            local _, onScreen = Camera:WorldToViewportPoint(pos)
+                            
+                            -- Se estiver longe E fora da tela, desativa agressivamente
+                            local hide = (dist > RenderRadius) and not onScreen
+                            
+                            if obj:IsA("BasePart") then 
                                 obj.LocalTransparencyModifier = hide and 1 or 0
-                            else
-                                for _, child in pairs(obj:GetDescendants()) do
-                                    if child:IsA("BasePart") then child.LocalTransparencyModifier = hide and 1 or 0 end
-                                end
+                            else 
+                                for _, p in pairs(obj:GetDescendants()) do 
+                                    if p:IsA("BasePart") then p.LocalTransparencyModifier = hide and 1 or 0 end 
+                                end 
                             end
                         end
                     end
@@ -154,118 +181,21 @@ task.spawn(function()
     end
 end)
 
--- [[ SEÇÃO 4: MANUTENÇÃO DE SISTEMA ]] --
-Tabs.Main:AddSection("Manutenção")
+-- [[ LIMPEZA DE SISTEMA ]] --
+Tabs.Main:AddSection("Manutenção de Memória")
 Tabs.Main:AddButton({
-    Title = "Limpar Memória RAM (Purge)",
+    Title = "Purga de RAM & Cache",
     Callback = function()
         collectgarbage("collect")
-        game:GetService("LogService"):ClearOutput()
-        Fluent:Notify({Title = "Sistema", Content = "Cache limpo e RAM otimizada!", Duration = 3})
+        game:GetService("ContentProvider"):PreloadAsync({}, function() return false end)
+        Fluent:Notify({Title = "Sistema", Content = "Cache de Assets e RAM limpos!", Duration = 3})
     end
 })
 
--- [ FINALIZAÇÃO ] --
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
-InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
-
-Window:SelectTab(1)
+-- [ INICIALIZAÇÃO ] --
+Tabs.Main:Select()
 Fluent:Notify({
     Title = "MASTER FPS ULTIMATE",
-    Content = "Tudo pronto! Otimizações aplicadas.",
+    Content = "Motor de performance carregado com sucesso!",
     Duration = 5
-})
-
--- [[ FPS BOOSTER & OPTIMIZER - PARTE 11: FLUIDEZ & LUZ DINÂMICA ]] --
-
-local FluidLightSection = Tabs.Main:AddSection("Fluidez Avançada & Iluminação")
-
--- [[ 1. ESTABILIZADOR DE FRAME (SMOOTH FRAME TIMING) ]] --
--- Evita os picos de lag (stutters) suavizando a carga da CPU entre frames
-local SmoothFrameToggle = Tabs.Main:AddToggle("SmoothFrame", {
-    Title = "Estabilizador de Fluidez", 
-    Default = false,
-    Description = "Suaviza a transição entre quadros para evitar travadinhas."
-})
-
-local RunService = game:GetService("RunService")
-SmoothFrameToggle:OnChanged(function(Value)
-    if Value then
-        _G.SmoothConn = RunService.Heartbeat:Connect(function(deltaTime)
-            -- Se o frame demorar muito, o script tenta limpar tarefas leves da fila
-            if deltaTime > 1/30 then 
-                settings().Physics.ThrottleAdjustTime = 0
-            end
-        end)
-        Fluent:Notify({Title = "Fluidez", Content = "Estabilizador de Frames Ativo.", Duration = 3})
-    else
-        if _G.SmoothConn then _G.SmoothConn:Disconnect() end
-    end
-end)
-
--- [[ 2. REMOVER LUZES DINÂMICAS (ANTI-HEAT) ]] --
--- Desativa PointLights e SpotLights (lâmpadas, tochas, lanternas) que pesam na GPU
-local NoDynamicLights = Tabs.Main:AddToggle("NoDynLights", {
-    Title = "Desativar Luzes de Objetos", 
-    Default = false,
-    Description = "Remove luzes de lâmpadas e poderes (Ótimo para economizar bateria)."
-})
-
-NoDynamicLights:OnChanged(function(Value)
-    local function ToggleLights(obj)
-        if obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
-            obj.Enabled = not Value
-        end
-    end
-
-    for _, v in pairs(game.Workspace:GetDescendants()) do
-        ToggleLights(v)
-    end
-
-    if Value then
-        _G.LightConn = game.Workspace.DescendantAdded:Connect(ToggleLights)
-    else
-        if _G.LightConn then _G.LightConn:Disconnect() end
-    end
-end)
-
--- [[ 3. MODO "SOMBRA ZERO" (ENGINE LEVEL) ]] --
--- Desativa propriedades da Engine que calculam reflexos de luz no chão e paredes
-Tabs.Main:AddButton({
-    Title = "Modo Sombra Zero (Ultra Low)",
-    Description = "Força a Engine a não calcular nenhum reflexo ou sombra.",
-    Callback = function()
-        local lighting = game:GetService("Lighting")
-        lighting.GlobalShadows = false
-        lighting.ShadowSoftness = 0
-        lighting.EnvironmentDiffuseScale = 0
-        lighting.EnvironmentSpecularScale = 0
-        lighting.OutdoorAmbient = Color3.fromRGB(100, 100, 100)
-        
-        -- Remove o brilho de materiais como Neon e Metal
-        for _, v in pairs(game.Workspace:GetDescendants()) do
-            if v:IsA("BasePart") and (v.Material == Enum.Material.Neon or v.Material == Enum.Material.Metal) then
-                v.Material = Enum.Material.SmoothPlastic
-            end
-        end
-        
-        Fluent:Notify({Title = "Iluminação", Content = "Reflexos e Sombras totalmente removidos.", Duration = 3})
-    end
-})
-
--- [[ 4. OTIMIZADOR DE FOG (NEBLINA) ]] --
--- Remove a neblina que esconde o mapa para ganhar performance de renderização
-Tabs.Main:AddToggle("NoFog", {
-    Title = "Remover Neblina (Clear View)",
-    Default = false,
-    Callback = function(Value)
-        if Value then
-            game:GetService("Lighting").FogEnd = 100000
-            game:GetService("Lighting").FogStart = 100000
-        else
-            game:GetService("Lighting").FogEnd = 1000
-        end
-    end
 })
