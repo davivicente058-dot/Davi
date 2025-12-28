@@ -220,6 +220,115 @@ task.spawn(function()
     end
 end)
 
+-- [[ MASTER FPS ULTIMATE - MÓDULO DE EXTENSÃO: MOTOR & FLUIDEZ ]] --
+
+local Tab_Engine = Window:CreateTab("Motor & Fluidez", 4483362458)
+
+-- [[ 1. DESATIVAR SOMBRAS TOTAIS ]] --
+Tab_Engine:CreateSection("Gerenciamento de Sombras")
+
+Tab_Engine:CreateToggle({
+   Name = "Desativar Todas as Sombras (Global)",
+   CurrentValue = false,
+   Callback = function(Value)
+       Lighting.GlobalShadows = not Value
+       for _, v in pairs(game.Workspace:GetDescendants()) do
+           if v:IsA("BasePart") then
+               v.CastShadow = not Value
+           end
+       end
+   end,
+})
+
+-- [[ 2. REDUÇÃO DE ANIMAÇÕES E FÍSICA ]] --
+Tab_Engine:CreateSection("Fluidez & Movimento")
+
+Tab_Engine:CreateToggle({
+   Name = "Reduzir Taxa de Animações",
+   CurrentValue = false,
+   Description = "Diminui a frequência de atualização de animações de NPCs e Jogadores distantes.",
+   Callback = function(Value)
+       _G.ReduceAnims = Value
+       task.spawn(function()
+           while _G.ReduceAnims do
+               for _, v in pairs(game.Players:GetPlayers()) do
+                   if v.Character and v ~= game.Players.LocalPlayer then
+                       local hum = v.Character:FindFirstChildOfClass("Humanoid")
+                       if hum then
+                           -- Força a animação a entrar em estado de economia
+                           hum.Animator.EvaluationMethod = Value and Enum.AnimatorEvaluationMethod.Throttled or Enum.AnimatorEvaluationMethod.Automatic
+                       end
+                   end
+               end
+               task.wait(5)
+           end
+       end)
+   end,
+})
+
+-- [[ 3. OTIMIZAÇÃO DE LUZES DINÂMICAS ]] --
+Tab_Engine:CreateSection("Efeitos de Luz")
+
+Tab_Engine:CreateToggle({
+   Name = "Remover Luzes Dinâmicas (Anti-Heat)",
+   CurrentValue = false,
+   Callback = function(Value)
+       for _, v in pairs(workspace:GetDescendants()) do
+           if v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight") then
+               v.Enabled = not Value
+           end
+       end
+   end,
+})
+
+-- [[ 4. REMOÇÃO DE EFEITOS VISUAIS PESADOS ]] --
+Tab_Engine:CreateSection("Limpeza de Pós-Processamento")
+
+Tab_Engine:CreateToggle({
+   Name = "Desativar Efeitos de Tela (Blur/Bloom)",
+   CurrentValue = false,
+   Callback = function(Value)
+       for _, v in pairs(Lighting:GetChildren()) do
+           if v:IsA("PostProcessEffect") or v:IsA("BlurEffect") or v:IsA("BloomEffect") or v:IsA("SunRaysEffect") then
+               v.Enabled = not Value
+           end
+       end
+   end,
+})
+
+-- [[ 5. MODO FLUIDEZ EXTREMA (RENDER STEPPED) ]] --
+Tab_Engine:CreateToggle({
+   Name = "Priorizar Fluidez sobre Gráficos",
+   CurrentValue = false,
+   Callback = function(Value)
+       if Value then
+           -- Força a Engine a ignorar renderização de detalhes microscópicos
+           settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level10
+           settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Enabled
+           Rayfield:Notify({Title = "Fluidez", Content = "Motor de Renderização simplificado.", Duration = 3})
+       else
+           settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Disabled
+       end
+   end,
+})
+
+-- [[ 6. OTIMIZADOR DE UI (MOBILE) ]] --
+Tab_Engine:CreateButton({
+   Name = "Otimizar Interface do Jogo",
+   Callback = function()
+       local PlayerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+       for _, v in pairs(PlayerGui:GetDescendants()) do
+           if v:IsA("ImageLabel") or v:IsA("ImageButton") then
+               -- Reduz qualidade de imagens da UI para economizar RAM
+               v.ResampleMode = Enum.ResamplerMode.Pixelated
+           end
+       end
+       Rayfield:Notify({Title = "UI", Content = "Interfaces pixeladas para economia de RAM.", Duration = 3})
+   end,
+})
+
+-- [[ FINALIZAÇÃO DO MÓDULO ]] --
+
 -- [[ 7. LIMPEZA PROFUNDA ]] --
 Tab_Perf:CreateSection("Manutenção de RAM")
 Tab_Perf:CreateButton({
