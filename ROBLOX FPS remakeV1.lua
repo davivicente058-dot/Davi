@@ -1,12 +1,6 @@
 --// =====================================
---// ROBLOX FPS - PARTE 0
---// UI LIBRARY + BASE GLOBAL
+--// PARTE 0 - UI BASE (ORION)
 --// =====================================
-
--- >>> BIBLIOTECA UI (RAYFIELD) <<<
-local Rayfield = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/shlexware/Rayfield/main/source.lua"
-))()
 
 -- Esperar jogo carregar
 if not game:IsLoaded() then
@@ -15,46 +9,66 @@ end
 
 -- Serviços
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
--- Log de debug
-warn("[ROBLOX FPS] Biblioteca Rayfield carregada")
+warn("[ROBLOX FPS] Iniciando UI alternativa")
+
+-- Carregar Orion Library
+local OrionLib = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/shlexware/Orion/main/source"
+))()
 
 -- Criar janela
-local Window = Rayfield:CreateWindow({
+local Window = OrionLib:MakeWindow({
     Name = "ROBLOX FPS",
-    LoadingTitle = "ROBLOX FPS",
-    LoadingSubtitle = "Remake",
-    ConfigurationSaving = {
-        Enabled = false
-    },
-    KeySystem = false
+    HidePremium = false,
+    SaveConfig = false,
+    IntroEnabled = false
 })
 
--- CORE GLOBAL (todas as partes usam isso)
+-- Core global (mantém compatibilidade)
 getgenv().FPS_CORE = {
     Flags = {},
     Cache = {},
     Connections = {},
-    State = {},
     Tabs = {},
-    FPS = 0,
-    LastFrame = tick(),
+    FPS = 0
 }
 
 local CORE = getgenv().FPS_CORE
 
--- Criar abas base
-CORE.Tabs.Main = Window:CreateTab("Principal")
-CORE.Tabs.Optimization = Window:CreateTab("Otimização")
-CORE.Tabs.Graphics = Window:CreateTab("Gráficos")
-CORE.Tabs.Competitive = Window:CreateTab("Competitivo")
-CORE.Tabs.Info = Window:CreateTab("Info")
+-- Criar abas (MESMOS NOMES)
+CORE.Tabs.Main = Window:MakeTab({
+    Name = "Principal",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
 
--- Funções utilitárias globais
+CORE.Tabs.Optimization = Window:MakeTab({
+    Name = "Otimização",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+CORE.Tabs.Graphics = Window:MakeTab({
+    Name = "Gráficos",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+CORE.Tabs.Competitive = Window:MakeTab({
+    Name = "Competitivo",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+CORE.Tabs.Info = Window:MakeTab({
+    Name = "Info",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- Funções de flags (compatível)
 function CORE:SetFlag(name, value)
     self.Flags[name] = value
 end
@@ -63,14 +77,13 @@ function CORE:GetFlag(name)
     return self.Flags[name]
 end
 
--- Confirmação visual
-Rayfield:Notify({
-    Title = "ROBLOX FPS",
+OrionLib:MakeNotification({
+    Name = "ROBLOX FPS",
     Content = "UI carregada com sucesso",
-    Duration = 3
+    Time = 3
 })
 
-warn("[ROBLOX FPS] PARTE 0 FINALIZADA COM SUCESSO")
+warn("[ROBLOX FPS] UI Orion carregada")
 
 --// =====================================
 --// FIM DA PARTE 0
