@@ -32,20 +32,17 @@ Rayfield:Notify({
 	Duration = 3
 })
 
---// ===============================================
---// PARTE 1 - CORE & TOGGLES (ROBUSTO, RAYFIELD-FRIENDLY)
---// - Cria CORE global de controle
---// - Detecta device (mobile/pc)
---// - Registra toggles principais (sem aplicar efeitos pesados)
---// - Fornece API: CORE:OnChange(flag, handler) e CORE:SetFlag/GetFlag
---// - Fallbacks seguros caso _G.Tabs não exista
---// ===============================================
+--// =========================================
+--// PARTE 1 - CORE REFEITA (APENAS LÓGICA, SEM UI)
+--// - NÃO altera UI (usa abas criadas na Parte 0)
+--// - Fornece API robusta para as próximas partes
+--// =========================================
 
--- Segurança: não carregar duas vezes
-if rawget(_G, "FPS_ULTRA_CORE_LOADED") then
+-- proteção contra carregamento duplo
+if rawget(_G, "FPS_CORE_LOADED_V2") then
     return
 end
-_G.FPS_ULTRA_CORE_LOADED = true
+rawset(_G, "FPS_CORE_LOADED_V2", true)
 
 -- Serviços
 local Players = game:GetService("Players")
@@ -54,63 +51,38 @@ local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- ====== UTIL SCRIPTS ======
-local function safe_pcall(fn, ...)
-    local ok, res = pcall(fn, ...)
-    return ok, res
-end
-
--- ====== CORE GLOBAL ======
+-- CORE global
 _G.FPS_CORE = _G.FPS_CORE or {}
 local CORE = _G.FPS_CORE
 
--- Inicializar se necessário
-CORE.Flags = CORE.Flags or {}            -- flags booleanas / estados
-CORE.Handlers = CORE.Handlers or {}      -- handlers por flag
-CORE._poller = CORE._poller or {}        -- internals
-CORE.Device = CORE.Device or nil
-CORE.Toggles = CORE.Toggles or {}        -- referências às toggles Rayfield (se houver)
-CORE.WindowRef = CORE.WindowRef or nil   -- opcional storage da window
+-- init fields
+CORE.Flags      = CORE.Flags or {}        -- booleans por nome
+CORE.Handlers   = CORE.Handlers or {}     -- handlers por flag
+CORE.Toggles    = CORE.Toggles or {}      -- referencia à toggle UI (se criada)
+CORE.Poller     = CORE.Poller or {active = true, rate = 0.45}
+CORE.Device     = CORE.Device or nil
+CORE.WindowRef  = CORE.WindowRef or nil
 
--- ====== DETECÇÃO DE DISPOSITIVO ======
+-- util seguro
+local function safe(fn, ...)
+    local ok, res = pcall(fn, ...)
+    if not ok then
+        warn("[FPS_CORE] erro em safe():", res)
+    end
+    return ok, res
+end
+
+-- detector de device simples e robusto
 do
     local platform = UserInputService:GetPlatform()
-    if platform == Enum.Platform.Android or platform == Enum.Platform.IOS then
+    if platform == Enum.Platform.IOS or platform == Enum.Platform.Android then
         CORE.Device = "Mobile"
     else
         CORE.Device = "PC"
     end
 end
 
--- ====== FUNÇÕES DO CORE ======
-function CORE:SetFlag(name, value)
-    self.Flags[name] = value
-    -- chama handlers registrados (se houver)
-    if self.Handlers[name] then
-        for _, h in ipairs(self.Handlers[name]) do
-            safe_pcall(h, value)
-        end
-    end
-end
-
-function CORE:GetFlag(name)
-    return self.Flags[name] == true
-end
-
--- Registrar um handler para uma flag (múltiplos handlers permitidos)
-function CORE:OnChange(name, handler)
-    if type(handler) ~= "function" then return end
-    self.Handlers[name] = self.Handlers[name] or {}
-    table.insert(self.Handlers[name], handler)
-end
-
--- Registra referência de toggle criada por Rayfield (opcional)
-function CORE:RegisterToggle(name, toggleObj)
-    if not name or toggleObj == nil then return end
-    self.Toggles[name] = toggleObj
-end
-
--- Tenta obter CurrentValue/Value de uma toggle Rayfield de forma segura
+-- lê valor de toggle de forma defensiva
 local function readToggleValue(t)
     if not t then return false end
     if type(t) == "table" then
@@ -124,135 +96,106 @@ local function readToggleValue(t)
     return false
 end
 
--- ====== SAFE CREATE TOGGLE HELPER (wrap Rayfield creation or create fallback) ======
--- Options: { Tab = _G.Tabs.X, Name = "My Toggle", Flag = "MyFlag", Default = false }
-local function createToggle(options)
+-- Set / Get flag (dispara handlers)
+function CORE:SetFlag(name, value)
+    local prior = self.Flags[name]
+    self.Flags[name] = value and true or false
+    if prior ~= self.Flags[name] and self.Handlers[name] then
+        for _, h in ipairs(self.Handlers[name]) do
+            safe(h, self.Flags[name])
+        end
+    end
+end
+
+function CORE:GetFlag(name)
+    return self.Flags[name] == true
+end
+
+-- Registra um handler: CORE:OnChange("FlagName", function(state) ... end)
+function CORE:OnChange(name, handler)
+    if type(handler) ~= "function" then return end
+    self.Handlers[name] = self.Handlers[name] or {}
+    table.insert(self.Handlers[name], handler)
+end
+
+-- Registra referência de toggle (quando a Parte 0 / Rayfield criar a toggle)
+function CORE:RegisterToggle(name, toggleObj)
+    if not name then return end
+    self.Toggles[name] = toggleObj
+    -- sincroniza estado inicial do toggle para CORE.Flags
+    local ok, v = pcall(readToggleValue, toggleObj)
+    if ok then
+        self.Flags[name] = v and true or false
+    end
+end
+
+-- Cria toggle na tab Rayfield (se possível). options = { Tab = _G.Tabs.X, Name = "X", Flag = "FlagName", Default = false }
+function CORE:CreateToggle(options)
     options = options or {}
     local tab = options.Tab
     local name = options.Name or "Toggle"
     local flag = options.Flag or name:gsub("%s+","")
     local default = options.Default or false
-    local createdObj = nil
 
-    -- if Rayfield tab exists and has CreateToggle (or CreateToggle alias), try that
-    if tab and type(tab) == "table" then
-        local ok, res = pcall(function()
-            -- Rayfield CreateToggle signature returns an object/table we can store
-            if type(tab.CreateToggle) == "function" then
-                return tab:CreateToggle({
-                    Name = name,
-                    CurrentValue = default,
-                    Flag = flag,
-                    Callback = function(val)
-                        CORE:SetFlag(flag, val)
-                    end
-                })
-            elseif type(tab.Create) == "function" then
-                -- some libs have different API
-                return tab:Create({ Name = name, Default = default })
-            end
-        end)
-        if ok and res then
-            createdObj = res
-            CORE:RegisterToggle(flag, createdObj)
-            -- ensure CORE flag default
-            CORE:SetFlag(flag, default)
-            return createdObj
-        end
-    end
-
-    -- fallback: create a simple placeholder table (no UI) so poller can read/write
-    createdObj = { CurrentValue = default, Value = default }
-    CORE:RegisterToggle(flag, createdObj)
-    CORE:SetFlag(flag, default)
-    return createdObj
-end
-
--- ====== ENSURE _G.Tabs AVAILABILITY (fallback safe) ======
-local Tabs = rawget(_G, "Tabs")
-if not Tabs then
-    -- try to find Rayfield window stored globally (common patterns)
-    local maybeTabs = rawget(_G, "Tabs") or rawget(_G, "FPS_UI_TABS") or nil
-    if maybeTabs and type(maybeTabs) == "table" then
-        Tabs = maybeTabs
-    else
-        -- final fallback: create a minimal fake tabs table so createToggle works w/out error
-        Tabs = {
-            Performance = {},
-            Graphics = {},
-            Visual = {},
-            Advanced = {}
-        }
-    end
-end
-
--- Attach a convenience for callers
-CORE.Tabs = Tabs
-
--- ====== CREATE THE MAIN TOGGLES (NO EFFECTS APPLIED HERE) ======
--- These toggles serve as the points of integration for future parts.
-local togglesToCreate = {
-    { Tab = Tabs.Performance, Name = "Modo Ultra (Extremo)", Flag = "UltraMode", Default = false },
-    { Tab = Tabs.Performance, Name = "Otimização Geral", Flag = "GeneralOptimize", Default = false },
-    { Tab = Tabs.Graphics,     Name = "Gráficos Ultra Baixos", Flag = "LowGraphics", Default = false },
-    { Tab = Tabs.Graphics,     Name = "Desativar Sombras", Flag = "DisableShadows", Default = false },
-    { Tab = Tabs.Graphics,     Name = "Modo Iluminação", Flag = "LightingMode_Padrao", Default = false }, -- placeholder; actual will be dropdown
-    { Tab = Tabs.Visual,       Name = "Remover Partículas", Flag = "ReduceParticles", Default = false },
-    { Tab = Tabs.Visual,       Name = "Reduzir Animações", Flag = "ReduceAnimations", Default = false },
-    { Tab = Tabs.Performance,  Name = "Fluidez Avançada", Flag = "AdvancedFluid", Default = false },
-    { Tab = Tabs.Advanced,     Name = "Mostrar FPS", Flag = "ShowFPS", Default = false },
-    { Tab = Tabs.Advanced,     Name = "Mira Central", Flag = "Crosshair", Default = false }
-}
-
-for _, t in ipairs(togglesToCreate) do
-    createToggle({ Tab = t.Tab, Name = t.Name, Flag = t.Flag, Default = t.Default })
-end
-
--- ====== Lighting mode dropdown (Create a selection control if tab supports it) ======
--- We attempt to create a dropdown on Graphics tab to choose between Padrao/Claro/Escuro
-local function tryCreateDropdown(tab)
-    if not tab or type(tab) ~= "table" then return nil end
-    local ok, res = pcall(function()
-        if type(tab.CreateDropdown) == "function" then
-            return tab:CreateDropdown({
-                Name = "Iluminação",
-                Options = { "Padrao", "Claro", "Escuro" },
-                CurrentOption = "Padrao",
-                Flag = "LightingPreset",
-                Callback = function(option)
-                    -- store in CORE as string
-                    CORE:SetFlag("LightingPreset", option)
+    -- tenta criar no Rayfield (API padrão: tab:CreateToggle)
+    if tab and type(tab) == "table" and type(tab.CreateToggle) == "function" then
+        local ok, toggleObj = pcall(function()
+            return tab:CreateToggle({
+                Name = name,
+                CurrentValue = default,
+                Flag = flag,
+                Callback = function(val)
+                    -- quando o usuário usa a UI, atualizamos o CORE
+                    CORE:SetFlag(flag, val)
                 end
             })
-        elseif type(tab.Create) == "function" and type(tab.CreateDropdown) ~= "function" and type(tab.CreateToggle) ~= "function" then
-            -- unknown API: skip
-            return nil
+        end)
+        if ok and toggleObj then
+            CORE:RegisterToggle(flag, toggleObj)
+            CORE.Flags[flag] = default and true or false
+            return toggleObj
+        end
+    end
+
+    -- fallback leve: cria placeholder table (não há UI)
+    local placeholder = { CurrentValue = default, Value = default }
+    CORE:RegisterToggle(flag, placeholder)
+    CORE.Flags[flag] = default and true or false
+    return placeholder
+end
+
+-- safe connect: tenta ligar eventos/callbacks expostos pela toggle
+local function safeConnectToggle(toggleObj, callback)
+    if not toggleObj then return end
+    safe(function()
+        if toggleObj.Changed and type(toggleObj.Changed.Connect) == "function" then
+            toggleObj.Changed:Connect(function()
+                local v = readToggleValue(toggleObj)
+                callback(v)
+            end)
+            return
+        end
+        if toggleObj.OnChanged and type(toggleObj.OnChanged.Connect) == "function" then
+            toggleObj.OnChanged:Connect(callback)
+            return
+        end
+        if type(toggleObj.Callback) == "function" then
+            -- Rayfield sometimes stores callback in the object; override is ok
+            toggleObj.Callback = callback
+            return
         end
     end)
-    if ok and res then
-        return res
-    end
-    return nil
 end
 
--- try to create dropdown (safe)
-local _drop = tryCreateDropdown(Tabs.Graphics)
-if not _drop then
-    -- fallback: set default flag
-    CORE:SetFlag("LightingPreset", "Padrao")
-end
-
--- ====== POLLER (FALLBACK LEVE) ======
--- Caso Rayfield toggles don't expose callbacks as we expected, poll CurrentValue a cada 0.40s
-CORE._poller.active = CORE._poller.active or true
+-- Poller: verifica periodicamente valores das toggles (fallback robusto)
 task.spawn(function()
-    while CORE._poller.active do
-        task.wait(0.4)
-        for flagName, toggleObj in pairs(CORE.Toggles) do
-            local ok, val = pcall(readToggleValue, toggleObj)
+    while CORE.Poller.active do
+        task.wait(CORE.Poller.rate or 0.45)
+        for flagName, tObj in pairs(CORE.Toggles) do
+            local ok, val = pcall(readToggleValue, tObj)
             if ok then
-                local prev = CORE.Flags[flagName]
-                if val ~= prev then
+                val = val and true or false
+                if CORE.Flags[flagName] ~= val then
                     CORE:SetFlag(flagName, val)
                 end
             end
@@ -260,24 +203,425 @@ task.spawn(function()
     end
 end)
 
--- ====== HELPER: expose registration API for future parts ======
--- Usage in future parts:
--- CORE:OnChange("ReduceParticles", function(state) ... end)
--- CORE:RegisterToggle("ReduceParticles", toggleReference) -- if want to override stored object
+-- Helper util para registrar toggle e conectar handler em um único passo:
+-- CORE:BindToggle({ Tab = _G.Tabs.Performance, Name="Nome", Flag="FlagName", Default=false }, function(state) ... end)
+function CORE:BindToggle(createOptions, handler)
+    if type(createOptions) ~= "table" then return end
+    local flag = createOptions.Flag or (createOptions.Name and createOptions.Name:gsub("%s+","")) or "Flag"
+    local tObj = createOptions.UseExisting and CORE.Toggles[flag] or nil
+    if not tObj then
+        tObj = CORE:CreateToggle({ Tab = createOptions.Tab, Name = createOptions.Name, Flag = flag, Default = createOptions.Default })
+    end
+    -- connect safe
+    safeConnectToggle(tObj, function(v) CORE:SetFlag(flag, v) end)
+    -- register handler
+    if type(handler) == "function" then
+        CORE:OnChange(flag, handler)
+    end
+    return tObj
+end
 
--- Provide a lightweight notify to confirm Part 1 loaded
-local successMsg = "[FPS ULTRA] PARTE 1 (CORE) CARREGADA - DEVICE: " .. tostring(CORE.Device)
-print(successMsg)
-if rawget(_G, "Rayfield") == nil then
-    -- don't assume Rayfield global — but if Window exists, try notify via Window
-    if type(_G.Tabs) == "table" and type(_G.Tabs.Performance) == "table" then
-        pcall(function()
-            if _G.Tabs.Performance.Notify then
-                _G.Tabs.Performance:Notify({ Title = "FPS ULTRA", Content = "Core carregado", Duration = 2 })
-            end
-        end)
+-- === Cria duas toggles-placeholder principais (NÃO executam efeitos aqui) ===
+-- Use CORE:OnChange("GeneralOptimize", handler) nas próximas partes para aplicar lógica real.
+local Tabs = rawget(_G, "Tabs") or rawget(_G, "_TABS") or _G.Tabs
+-- tentativa segura de localizar abas caso Parte0 guardou em outro nome
+local tabPerf = (Tabs and Tabs.Performance) or (Tabs and Tabs.PerformanceTab) or nil
+local tabGraphics = (Tabs and Tabs.Graphics) or nil
+
+-- bind placeholders (these will create UI toggles if tab exists, otherwise placeholders)
+CORE:BindToggle({ Tab = tabPerf, Name = "Otimização Geral", Flag = "GeneralOptimize", Default = false }, nil)
+CORE:BindToggle({ Tab = tabPerf, Name = "Modo Ultra (Extremo)", Flag = "UltraMode", Default = false }, nil)
+
+-- expose CORE to global shortname for convenience
+rawset(_G, "CORE_FPS", CORE)
+
+print("[FPS_CORE] PARTE 1 REFEITA - CORE PRONTO (Device:", CORE.Device, ")")
+
+-- =========================================
+-- PARTE 2 - GRAFICOS BAIXOS + DESATIVAR SOMBRAS
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+
+-- BACKUP (para evitar bug quando desligar)
+local Backup = {
+	Brightness = Lighting.Brightness,
+	GlobalShadows = Lighting.GlobalShadows,
+	Technology = Lighting.Technology
+}
+
+-- ================================
+-- FUNÇÃO 1: GRÁFICOS BAIXOS REAIS
+-- ================================
+local function LowGraphics(state)
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			if state then
+				obj.Material = Enum.Material.Plastic
+				obj.Reflectance = 0
+			end
+		elseif obj:IsA("Decal") or obj:IsA("Texture") then
+			if state then
+				obj.Transparency = 1
+			end
+		elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+			obj.Enabled = not state
+		end
+	end
+
+	if state then
+		Lighting.Brightness = 1
+	else
+		Lighting.Brightness = Backup.Brightness
+	end
+end
+
+-- ================================
+-- FUNÇÃO 2: DESATIVAR SOMBRAS
+-- ================================
+local function DisableShadows(state)
+	Lighting.GlobalShadows = not state
+
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.CastShadow = not state
+		end
+	end
+end
+
+-- ================================
+-- CONEXÃO COM CORE (REAL)
+-- ================================
+
+CORE:OnChange("LowGraphics", function(state)
+	task.spawn(function()
+		LowGraphics(state)
+	end)
+end)
+
+CORE:OnChange("DisableShadows", function(state)
+	task.spawn(function()
+		DisableShadows(state)
+	end)
+end)
+
+-- ================================
+-- TOGGLES NA UI (RAYFIELD)
+-- ================================
+
+CORE:CreateToggle({
+	Tab = _G.Tabs.Graphics,
+	Name = "Gráficos Baixos",
+	Flag = "LowGraphics",
+	Default = false
+})
+
+CORE:CreateToggle({
+	Tab = _G.Tabs.Graphics,
+	Name = "Desativar Sombras",
+	Flag = "DisableShadows",
+	Default = false
+})
+
+print("[FPS SCRIPT] Parte 2 carregada com sucesso")
+
+-- =========================================
+-- PARTE 3 - REDUZIR PARTÍCULAS (INTELIGENTE) + REDUZIR ANIMAÇÕES (INTELIGENTE)
+-- Requisitos: _G.FPS_CORE (Parte 1) e UI (Parte 0/1)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then
+    warn("[FPS ULTRA] Parte 3: CORE não encontrado. Cole a Parte 1 antes desta.")
+    return
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- safe wrapper
+local function safe(fn, ...)
+    local ok, res = pcall(fn, ...)
+    if not ok then warn("[FPS ULTRA][Parte3] erro:", res) end
+    return ok, res
+end
+
+-- BACKUPS
+local BACKUP = {
+    Particles = {}, -- emitter -> { Enabled, Rate }
+    Trails = {},    -- trail -> { Enabled }
+    AnimTracks = {} -- track -> originalSpeed
+}
+
+-- CONFIG (tweak leve para comportamento)
+local CONFIG = {
+    ParticleDistanceThreshold = 80, -- studs: distant emitters are fully disabled
+    ParticleNearRateScale = 0.25,   -- near emitters rate scale (0.25 = 25% of original)
+    PollInterval = 1.25,            -- seconds between checks (leve)
+    AnimationDistanceThreshold = 60,-- reduce animations for characters farther than this
+    AnimationSpeedScale = 0.45      -- reduce distant animation speed to this fraction
+}
+
+-- HELPERS
+local function isDescendantOfLocalCharacter(obj)
+    local char = LocalPlayer.Character
+    if not char then return false end
+    return char == obj or (obj:IsDescendantOf(char))
+end
+
+local function getDistanceFromLocal(obj)
+    local cam = workspace.CurrentCamera
+    local root = nil
+    if obj:IsA("BasePart") then root = obj
+    else
+        root = obj:FindFirstChild("HumanoidRootPart") or obj:IsA("Model") and obj:FindFirstChildWhichIsA("BasePart")
+    end
+    if not root then
+        -- fallback try using camera
+        if cam and cam.Focus and cam.Focus.Position then
+            return (root and (root.Position - cam.Focus.Position).Magnitude) or math.huge
+        end
+        return math.huge
+    end
+    local camPos = cam and cam.CFrame and cam.CFrame.p or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position) or Vector3.new(0,0,0)
+    return (root.Position - camPos).Magnitude
+end
+
+-- ========== PARTICLE REDUCTION ==========
+local PART_REDUCE_ENABLED = false
+local particleTask = nil
+
+local function backupParticleState(emitter)
+    if not emitter then return end
+    if BACKUP.Particles[emitter] then return end
+    BACKUP.Particles[emitter] = {
+        Enabled = safe(function() return emitter.Enabled end) and emitter.Enabled or false,
+        Rate = safe(function() return emitter.Rate end) and (emitter.Rate or nil) or nil
+    }
+end
+
+local function restoreParticleState(emitter)
+    if not emitter then return end
+    local b = BACKUP.Particles[emitter]
+    if not b then return end
+    pcall(function()
+        if b.Rate ~= nil and emitter.Rate ~= nil then emitter.Rate = b.Rate end
+        emitter.Enabled = b.Enabled
+    end)
+    BACKUP.Particles[emitter] = nil
+end
+
+local function processParticlesOnce()
+    -- iterate emitters and trails (safe)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        -- ParticleEmitter
+        if obj:IsA("ParticleEmitter") then
+            safe(function()
+                -- ignore emitters that are part of local player's character (we keep local experience)
+                if isDescendantOfLocalCharacter(obj) then
+                    -- ensure restored if previously modified
+                    if BACKUP.Particles[obj] then restoreParticleState(obj) end
+                    return
+                end
+
+                local dist = getDistanceFromLocal(obj)
+                -- backup original state first time
+                backupParticleState(obj)
+
+                -- if far away -> disable completely
+                if dist >= CONFIG.ParticleDistanceThreshold then
+                    if obj.Enabled then obj.Enabled = false end
+                else
+                    -- near: reduce Rate if available (scale down)
+                    if obj.Rate ~= nil then
+                        local b = BACKUP.Particles[obj] and BACKUP.Particles[obj].Rate or obj.Rate
+                        if b and b > 0 then
+                            local newRate = math.max(1, math.floor(b * CONFIG.ParticleNearRateScale))
+                            obj.Rate = newRate
+                            obj.Enabled = true
+                        end
+                    else
+                        -- if no Rate property (rare), just ensure enabled true (don't break)
+                        obj.Enabled = true
+                    end
+                end
+            end)
+        end
+
+        -- Trail
+        if obj:IsA("Trail") then
+            safe(function()
+                if isDescendantOfLocalCharacter(obj) then
+                    if BACKUP.Trails[obj] then restoreParticleState(obj) end
+                    return
+                end
+                -- backup
+                if not BACKUP.Trails[obj] then
+                    BACKUP.Trails[obj] = { Enabled = obj.Enabled }
+                end
+                local dist = getDistanceFromLocal(obj)
+                if dist >= CONFIG.ParticleDistanceThreshold then
+                    obj.Enabled = false
+                else
+                    obj.Enabled = true
+                end
+            end)
+        end
     end
 end
 
--- END PARTE 1
+local function restoreAllParticles()
+    for emitter, _ in pairs(BACKUP.Particles) do
+        pcall(function() restoreParticleState(emitter) end)
+    end
+    for trail, _ in pairs(BACKUP.Trails) do
+        pcall(function()
+            if trail and trail.Parent then
+                trail.Enabled = BACKUP.Trails[trail].Enabled
+            end
+        end)
+    end
+    BACKUP.Particles = {}
+    BACKUP.Trails = {}
+end
 
+local function startParticleReduction()
+    if PART_REDUCE_ENABLED then return end
+    PART_REDUCE_ENABLED = true
+    -- initial pass
+    processParticlesOnce()
+    particleTask = task.spawn(function()
+        while PART_REDUCE_ENABLED do
+            task.wait(CONFIG.PollInterval)
+            processParticlesOnce()
+        end
+    end)
+end
+
+local function stopParticleReduction()
+    if not PART_REDUCE_ENABLED then return end
+    PART_REDUCE_ENABLED = false
+    if particleTask then
+        pcall(function() task.cancel(particleTask) end)
+        particleTask = nil
+    end
+    -- restore original states
+    restoreAllParticles()
+end
+
+-- ========== ANIMATION REDUCTION ==========
+local ANIM_REDUCE_ENABLED = false
+local animTask = nil
+
+local function backupTrack(track)
+    if not track then return end
+    if BACKUP.AnimTracks[track] ~= nil then return end
+    local ok, s = pcall(function() return track.Speed end)
+    BACKUP.AnimTracks[track] = ok and s or 1
+end
+
+local function restoreTrack(track)
+    if not track then return end
+    local orig = BACKUP.AnimTracks[track]
+    if orig ~= nil then
+        pcall(function() track:AdjustSpeed(orig) end)
+        BACKUP.AnimTracks[track] = nil
+    end
+end
+
+local function processAnimationsOnce()
+    -- find humanoids in workspace
+    for _, model in ipairs(Workspace:GetDescendants()) do
+        if model:IsA("Model") then
+            local humanoid = model:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.RootPart then
+                -- skip local player's own character to avoid affecting player's own controls/feel
+                if LocalPlayer.Character and model == LocalPlayer.Character then
+                    -- ensure any previous modifications to local player's tracks are restored
+                    for track, _ in pairs(BACKUP.AnimTracks) do
+                        if track and track.Instance and track:IsA and track:IsA("AnimationTrack") and track.Parent and track.Parent:IsDescendantOf(LocalPlayer.Character) then
+                            restoreTrack(track)
+                        end
+                    end
+                    goto continue_model
+                end
+
+                local dist = (humanoid.RootPart.Position - (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position or humanoid.RootPart.Position)).Magnitude
+                if dist >= CONFIG.AnimationDistanceThreshold then
+                    -- for distant humanoids, reduce playing track speeds
+                    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                        safe(function()
+                            backupTrack(track)
+                            -- reduce speed only if not already very low
+                            local current = 1
+                            pcall(function() current = track.Speed end)
+                            if current > CONFIG.AnimationSpeedScale + 0.05 then
+                                track:AdjustSpeed(CONFIG.AnimationSpeedScale)
+                            end
+                        end)
+                    end
+                else
+                    -- if close, restore tracks for that humanoid if we had modified them before
+                    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                        safe(function()
+                            if BACKUP.AnimTracks[track] then
+                                restoreTrack(track)
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+        ::continue_model::
+    end
+end
+
+local function restoreAllAnimTracks()
+    for track, _ in pairs(BACKUP.AnimTracks) do
+        pcall(function() restoreTrack(track) end)
+    end
+    BACKUP.AnimTracks = {}
+end
+
+local function startAnimationReduction()
+    if ANIM_REDUCE_ENABLED then return end
+    ANIM_REDUCE_ENABLED = true
+    processAnimationsOnce()
+    animTask = task.spawn(function()
+        while ANIM_REDUCE_ENABLED do
+            task.wait(CONFIG.PollInterval)
+            processAnimationsOnce()
+        end
+    end)
+end
+
+local function stopAnimationReduction()
+    if not ANIM_REDUCE_ENABLED then return end
+    ANIM_REDUCE_ENABLED = false
+    if animTask then
+        pcall(function() task.cancel(animTask) end)
+        animTask = nil
+    end
+    restoreAllAnimTracks()
+end
+
+-- ========== CORE HANDLERS + TOGGLES ==========
+CORE:OnChange("ReduceParticles", function(state)
+    if state then startParticleReduction() else stopParticleReduction() end
+end)
+
+CORE:OnChange("ReduceAnimations", function(state)
+    if state then startAnimationReduction() else stopAnimationReduction() end
+end)
+
+-- Create toggles in UI (if CORE.Tabs available this will attempt to add them)
+CORE:CreateToggle({ Tab = CORE.Tabs and CORE.Tabs.Visual or nil, Name = "Remover Partículas (Inteligente)", Flag = "ReduceParticles", Default = false })
+CORE:CreateToggle({ Tab = CORE.Tabs and CORE.Tabs.Visual or nil, Name = "Reduzir Animações (Inteligente)", Flag = "ReduceAnimations", Default = false })
+
+print("[FPS ULTRA] PARTE 3 carregada — Partículas e Animações inteligentes prontas.")
