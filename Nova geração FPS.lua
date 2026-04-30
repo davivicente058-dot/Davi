@@ -147,3 +147,102 @@ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 end)
 
 print("UI Next Gen carregada")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - PARTE 1 (CORE)
+-- Sistema profissional e leve
+-- =========================================
+
+if _G.FPS_CORE then return end
+
+local CORE = {}
+_G.FPS_CORE = CORE
+
+-- =========================
+-- ESTADOS E CALLBACKS
+-- =========================
+
+CORE.Flags = {}
+CORE.Callbacks = {}
+
+-- =========================
+-- SISTEMA DE FLAGS
+-- =========================
+
+function CORE:Set(flag, value)
+	self.Flags[flag] = value
+
+	if self.Callbacks[flag] then
+		for _, callback in ipairs(self.Callbacks[flag]) do
+			task.spawn(callback, value)
+		end
+	end
+end
+
+function CORE:Get(flag)
+	return self.Flags[flag]
+end
+
+function CORE:On(flag, callback)
+	if not self.Callbacks[flag] then
+		self.Callbacks[flag] = {}
+	end
+
+	table.insert(self.Callbacks[flag], callback)
+end
+
+-- =========================
+-- INTEGRAÇÃO COM UI
+-- =========================
+
+local UI = _G.UI
+if not UI then
+	warn("UI não encontrada (Parte 0 faltando)")
+	return
+end
+
+CORE.UI = UI
+
+-- =========================
+-- FUNÇÕES DE CRIAÇÃO
+-- =========================
+
+function CORE:CreateToggle(name, flag)
+	self.Flags[flag] = false
+
+	UI:Toggle(name, function(state)
+		CORE:Set(flag, state)
+	end)
+end
+
+function CORE:CreateButton(name, callback)
+	UI:Button(name, callback)
+end
+
+-- =========================
+-- INFORMAÇÕES DO DISPOSITIVO
+-- =========================
+
+local UIS = game:GetService("UserInputService")
+
+CORE.Device = UIS.TouchEnabled and "Mobile" or "PC"
+
+-- =========================
+-- DEBUG LEVE
+-- =========================
+
+function CORE:Log(msg)
+	print("[FPS CORE]: "..msg)
+end
+
+CORE:Log("Sistema iniciado | Device: "..CORE.Device)
+
+-- =========================
+-- EXEMPLOS (PODE REMOVER DPS)
+-- =========================
+
+CORE:CreateToggle("Modo Teste", "TestMode")
+
+CORE:On("TestMode", function(state)
+	CORE:Log("Modo Teste: "..tostring(state))
+end)
