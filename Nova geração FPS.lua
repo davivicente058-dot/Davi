@@ -1538,3 +1538,52 @@ CORE:On("MasterPerf", function(state)
 end)
 
 CORE:Log("Master Performance carregado")
+
+-- =========================================
+-- MODO ESSENCIAL (LEVE E EFICIENTE)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Active = false
+
+-- =========================
+-- FUNÇÃO PRINCIPAL
+-- =========================
+
+local function applyEssential()
+
+	-- DESLIGA TUDO PRIMEIRO (IMPORTANTE)
+	pcall(function()
+		CORE:Set("VFXPro", false)
+		CORE:Set("VFXExtreme", false)
+		CORE:Set("VFXZero", false)
+		CORE:Set("AutoPerfSafe", false)
+		CORE:Set("MasterPerf", false)
+	end)
+
+	-- ATIVA SÓ O NECESSÁRIO
+	pcall(function()
+		CORE:Set("VFXBalanced", true)
+		CORE:Set("RenderBoostSafe", true)
+		CORE:Set("AntiStutter", true)
+	end)
+
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+CORE:CreateToggle("Modo Essencial (Recomendado)", "EssentialMode")
+
+CORE:On("EssentialMode", function(state)
+	Active = state
+
+	if state then
+		applyEssential()
+	end
+end)
+
+CORE:Log("Modo Essencial carregado")
