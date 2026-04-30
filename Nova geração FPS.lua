@@ -963,3 +963,106 @@ btn.MouseButton1Click:Connect(function()
 end)
 
 CORE:Log("Sistema de ocultar UI carregado")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - SAILOR PIECE VFX FIX
+-- Intercepta efeitos em tempo real
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Workspace = game:GetService("Workspace")
+
+local Connection = nil
+local Active = false
+
+-- =========================
+-- REDUZIR EFEITO
+-- =========================
+
+local function optimize(obj)
+
+	-- partículas
+	if obj:IsA("ParticleEmitter") then
+		obj.Rate = 2
+		obj.Lifetime = NumberRange.new(0.05, 0.1)
+		obj.Speed = NumberRange.new(0, 0)
+	end
+
+	-- trails
+	if obj:IsA("Trail") then
+		obj.Lifetime = 0.03
+	end
+
+	-- beams
+	if obj:IsA("Beam") then
+		obj.Width0 = 0.05
+		obj.Width1 = 0.05
+	end
+
+	-- explosões
+	if obj:IsA("Explosion") then
+		obj.BlastPressure = 0
+		obj.BlastRadius = 0
+	end
+
+	-- luzes
+	if obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+		obj.Brightness = 0
+		obj.Range = 0
+	end
+
+	-- fogo/fumaça
+	if obj:IsA("Fire") or obj:IsA("Smoke") then
+		obj.Enabled = false
+	end
+end
+
+-- =========================
+-- INICIAR
+-- =========================
+
+local function start()
+
+	if Connection then return end
+
+	-- objetos existentes
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		optimize(obj)
+	end
+
+	-- novos objetos
+	Connection = Workspace.DescendantAdded:Connect(function(obj)
+		if Active then
+			task.defer(function()
+				optimize(obj)
+			end)
+		end
+	end)
+end
+
+local function stop()
+	if Connection then
+		Connection:Disconnect()
+		Connection = nil
+	end
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+CORE:CreateToggle("Sailor Piece VFX Fix", "SailorFix")
+
+CORE:On("SailorFix", function(state)
+	Active = state
+
+	if state then
+		start()
+	else
+		stop()
+	end
+end)
+
+CORE:Log("Sailor Piece VFX Fix carregado")
