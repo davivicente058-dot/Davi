@@ -1326,3 +1326,215 @@ CORE:On("AutoPerfSafe", function(state)
 		start()
 	end
 end)
+
+-- =========================================
+-- ANTI STUTTER PRO (FLUIDEZ REAL)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local RunService = game:GetService("RunService")
+
+local Active = false
+local Connection = nil
+
+local accumulator = 0
+
+local function start()
+	if Connection then return end
+
+	Connection = RunService.Heartbeat:Connect(function(dt)
+		if not Active then return end
+
+		accumulator += dt
+
+		-- só executa em intervalos controlados
+		if accumulator >= 0.2 then
+			accumulator = 0
+			
+			-- micro otimização leve
+			RunService:Set3dRenderingEnabled(true)
+		end
+	end)
+end
+
+local function stop()
+	if Connection then
+		Connection:Disconnect()
+		Connection = nil
+	end
+end
+
+CORE:CreateToggle("Anti Stutter (Fluidez)", "AntiStutter")
+
+CORE:On("AntiStutter", function(state)
+	Active = state
+
+	if state then
+		start()
+	else
+		stop()
+	end
+end)
+
+-- =========================================
+-- LIMPEZA INVISÍVEL (GANHO REAL)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Active = false
+
+CORE:CreateToggle("Limpeza Invisível", "InvisibleClean")
+
+CORE:On("InvisibleClean", function(state)
+	Active = state
+	if not state then return end
+
+	task.spawn(function()
+		for _, obj in ipairs(game:GetDescendants()) do
+			
+			-- sons desnecessários
+			if obj:IsA("Sound") then
+				if obj.Volume == 0 or obj.Playing == false then
+					obj:Destroy()
+				end
+			end
+
+			-- GUIs invisíveis
+			if obj:IsA("GuiObject") then
+				if obj.Visible == false then
+					obj:Destroy()
+				end
+			end
+
+			-- scripts inúteis locais
+			if obj:IsA("LocalScript") then
+				if obj.Disabled then
+					obj:Destroy()
+				end
+			end
+
+		end
+	end)
+end)
+
+-- =========================================
+-- PERFORMANCE BOOST (FORÇA MÁXIMA)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Active = false
+
+CORE:CreateToggle("Forçar Desempenho Máximo", "MaxPerf")
+
+CORE:On("MaxPerf", function(state)
+	Active = state
+	if not state then return end
+
+	task.spawn(function()
+		-- força gráfico mínimo
+		settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+
+		-- reduz terreno
+		pcall(function()
+			workspace.Terrain.WaterWaveSize = 0
+			workspace.Terrain.WaterWaveSpeed = 0
+			workspace.Terrain.WaterReflectance = 0
+			workspace.Terrain.WaterTransparency = 1
+		end)
+	end)
+end)
+
+-- =========================================
+-- MASTER PERFORMANCE MODE (PRIORIDADE)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local Active = false
+local Running = false
+local Connection = nil
+
+-- =========================
+-- FUNÇÃO PRINCIPAL
+-- =========================
+
+local function start()
+
+	if Running then return end
+	Running = true
+
+	-- DESATIVA FUNÇÕES PESADAS
+	pcall(function()
+		CORE:Set("VFXBalanced", false)
+		CORE:Set("VFXPro", false)
+		CORE:Set("VFXExtreme", true) -- mantém só a melhor
+		CORE:Set("VFXZero", false)
+		CORE:Set("RenderBoostSafe", true)
+		CORE:Set("AutoPerfSafe", false)
+	end)
+
+	-- LOOP CONTROLADO
+	Connection = RunService.Heartbeat:Connect(function(dt)
+		if not Active then return end
+
+		-- micro controle de carga
+		RunService:Set3dRenderingEnabled(true)
+	end)
+
+	-- OTIMIZAÇÃO LEVE GLOBAL
+	task.spawn(function()
+		while Active do
+			
+			for _, obj in ipairs(Workspace:GetDescendants()) do
+				
+				if obj:IsA("BasePart") then
+					obj.CastShadow = false
+				end
+
+				if obj:IsA("ParticleEmitter") then
+					obj.Rate = 3
+				end
+
+			end
+
+			task.wait(2) -- SEM LOOP PESADO
+		end
+
+		Running = false
+	end)
+end
+
+local function stop()
+	if Connection then
+		Connection:Disconnect()
+		Connection = nil
+	end
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+CORE:CreateToggle("MASTER FPS + FLUIDEZ (PRIORIDADE)", "MasterPerf")
+
+CORE:On("MasterPerf", function(state)
+	Active = state
+
+	if state then
+		start()
+	else
+		stop()
+	end
+end)
+
+CORE:Log("Master Performance carregado")
