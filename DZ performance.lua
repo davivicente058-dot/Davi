@@ -674,3 +674,209 @@ _G.DZ.CreateToggle("Mostrar FPS (Real)", function(state)
 	Active = state
 	fpsLabel.Visible = state
 end)
+
+-- =========================================
+-- DZ PERFORMANCE - PLAYER OPTIMIZER (REAL)
+-- =========================================
+
+local Players = game:GetService("Players")
+
+local Active = false
+
+-- =========================
+-- OTIMIZA PLAYER
+-- =========================
+
+local function optimizeCharacter(char)
+
+	for _, v in ipairs(char:GetDescendants()) do
+		
+		-- acessórios pesados
+		if v:IsA("Accessory") then
+			v:Destroy()
+		end
+
+		-- roupas (opcional leve)
+		if v:IsA("ShirtGraphic") then
+			v:Destroy()
+		end
+
+		-- animação pesada
+		if v:IsA("AnimationController") or v:IsA("Animator") then
+			v:Destroy()
+		end
+
+		-- partículas do player
+		if v:IsA("ParticleEmitter") then
+			v.Rate = 2
+		end
+	end
+
+end
+
+-- =========================
+-- APLICAR EM TODOS
+-- =========================
+
+local function setup()
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		
+		if plr.Character then
+			optimizeCharacter(plr.Character)
+		end
+
+		plr.CharacterAdded:Connect(function(char)
+			if Active then
+				task.wait(1)
+				optimizeCharacter(char)
+			end
+		end)
+	end
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+_G.DZ.CreateToggle("Player Optimizer (PvP Boost)", function(state)
+	Active = state
+
+	if state then
+		setup()
+	end
+end)
+
+-- =========================================
+-- DZ PERFORMANCE - VFX DINÂMICO INTELIGENTE
+-- =========================================
+
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local Active = false
+local Running = false
+
+-- =========================
+-- FPS REAL
+-- =========================
+
+local frames = 0
+local last = tick()
+local fps = 60
+
+RunService.RenderStepped:Connect(function()
+	if Active then
+		frames += 1
+	end
+end)
+
+local function updateFPS()
+	if tick() - last >= 1 then
+		fps = frames
+		frames = 0
+		last = tick()
+	end
+end
+
+-- =========================
+-- NÍVEL DE OTIMIZAÇÃO
+-- =========================
+
+local function getLevel()
+	if fps > 50 then
+		return 1 -- leve
+	elseif fps > 35 then
+		return 2 -- médio
+	else
+		return 3 -- agressivo
+	end
+end
+
+-- =========================
+-- APLICAR VFX
+-- =========================
+
+local function optimize(obj, level)
+
+	if obj:IsA("ParticleEmitter") then
+		
+		if level == 1 then
+			obj.Rate = math.min(obj.Rate, 15)
+
+		elseif level == 2 then
+			obj.Rate = math.min(obj.Rate, 6)
+			obj.Lifetime = NumberRange.new(0.2, 0.4)
+
+		elseif level == 3 then
+			obj.Rate = 2
+			obj.Lifetime = NumberRange.new(0.1, 0.2)
+		end
+	end
+
+	if obj:IsA("Trail") then
+		obj.Lifetime = level == 3 and 0.05 or 0.1
+	end
+
+	if obj:IsA("Beam") then
+		if level >= 2 then
+			obj.Width0 = 0.1
+			obj.Width1 = 0.1
+		end
+	end
+
+	if obj:IsA("PointLight") or obj:IsA("SpotLight") then
+		if level == 3 then
+			obj.Brightness = 0.3
+		end
+	end
+end
+
+-- =========================
+-- LOOP INTELIGENTE
+-- =========================
+
+local function start()
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+
+			updateFPS()
+			local level = getLevel()
+
+			local objects = Workspace:GetDescendants()
+			local batch = 180
+
+			for i = 1, #objects, batch do
+				if not Active then break end
+
+				for j = i, math.min(i + batch - 1, #objects) do
+					local obj = objects[j]
+					if obj then
+						optimize(obj, level)
+					end
+				end
+
+				task.wait()
+			end
+
+			task.wait(1)
+		end
+
+		Running = false
+	end)
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+_G.DZ.CreateToggle("VFX Dinâmico (Auto FPS)", function(state)
+	Active = state
+
+	if state then
+		start()
+	end
+end)
