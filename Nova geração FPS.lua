@@ -587,3 +587,99 @@ CORE:On("VFXPro", function(state)
 end)
 
 CORE:Log("Parte 5 carregada (VFX PRO)")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - PARTE 6
+-- VFX EXTREMO (MODO INSANO)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Workspace = game:GetService("Workspace")
+
+local Active = false
+local Running = false
+
+-- =========================
+-- FUNÇÃO EXTREMA
+-- =========================
+
+local function processExtreme()
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+			local objects = Workspace:GetDescendants()
+
+			for i = 1, #objects, 200 do
+				if not Active then break end
+
+				for j = i, math.min(i + 199, #objects) do
+					local obj = objects[j]
+
+					if obj then
+						-- PARTICULAS
+						if obj:IsA("ParticleEmitter") then
+							obj.Enabled = false
+						end
+
+						-- TRAIL
+						if obj:IsA("Trail") then
+							obj.Enabled = false
+						end
+
+						-- BEAM
+						if obj:IsA("Beam") then
+							obj.Enabled = false
+						end
+
+						-- FOGO / FUMAÇA
+						if obj:IsA("Fire") or obj:IsA("Smoke") then
+							obj.Enabled = false
+						end
+
+						-- EXPLOSÕES
+						if obj:IsA("Explosion") then
+							obj.BlastPressure = 0
+							obj.BlastRadius = 0
+						end
+
+						-- LUZES DINÂMICAS
+						if obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+							obj.Enabled = false
+						end
+
+						-- DECALS (efeitos visuais)
+						if obj:IsA("Decal") then
+							obj.Transparency = 1
+						end
+					end
+				end
+
+				task.wait()
+			end
+
+			task.wait(1) -- agressivo mas controlado
+		end
+
+		Running = false
+	end)
+end
+
+-- =========================
+-- TOGGLE EXTREMO
+-- =========================
+
+CORE:CreateToggle("VFX EXTREMO (FPS MAX)", "VFXExtreme")
+
+CORE:On("VFXExtreme", function(state)
+	Active = state
+
+	if state then
+		processExtreme()
+	end
+end)
+
+CORE:Log("Parte 6 carregada (VFX EXTREMO)")
