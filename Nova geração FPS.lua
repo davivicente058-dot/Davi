@@ -1066,3 +1066,106 @@ CORE:On("SailorFix", function(state)
 end)
 
 CORE:Log("Sailor Piece VFX Fix carregado")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - SAILOR VFX BALANCEADO
+-- Mantém visual, reduz peso
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Workspace = game:GetService("Workspace")
+
+local Connection = nil
+local Active = false
+
+-- =========================
+-- OTIMIZAÇÃO BALANCEADA
+-- =========================
+
+local function optimize(obj)
+
+	-- PARTICLES (mantém, mas reduz)
+	if obj:IsA("ParticleEmitter") then
+		obj.Rate = math.max(5, obj.Rate * 0.25)
+		obj.Lifetime = NumberRange.new(0.2, 0.4)
+		obj.Speed = NumberRange.new(1, 3)
+	end
+
+	-- TRAIL (mantém leve)
+	if obj:IsA("Trail") then
+		obj.Lifetime = 0.1
+	end
+
+	-- BEAM (mais fino)
+	if obj:IsA("Beam") then
+		obj.Width0 = 0.15
+		obj.Width1 = 0.15
+	end
+
+	-- EXPLOSÃO (visual menor, sem peso)
+	if obj:IsA("Explosion") then
+		obj.BlastPressure = 0
+		obj.BlastRadius = 2
+	end
+
+	-- LUZ (reduz mas não remove)
+	if obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+		obj.Brightness = 0.5
+		obj.Range = 8
+	end
+
+	-- FOGO / FUMAÇA (menos intenso)
+	if obj:IsA("Fire") or obj:IsA("Smoke") then
+		obj.Size = obj.Size * 0.5
+	end
+end
+
+-- =========================
+-- INICIAR
+-- =========================
+
+local function start()
+
+	if Connection then return end
+
+	-- já existentes
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		optimize(obj)
+	end
+
+	-- novos efeitos
+	Connection = Workspace.DescendantAdded:Connect(function(obj)
+		if Active then
+			task.defer(function()
+				optimize(obj)
+			end)
+		end
+	end)
+end
+
+local function stop()
+	if Connection then
+		Connection:Disconnect()
+		Connection = nil
+	end
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+CORE:CreateToggle("Sailor VFX Balanceado", "SailorBalanced")
+
+CORE:On("SailorBalanced", function(state)
+	Active = state
+
+	if state then
+		start()
+	else
+		stop()
+	end
+end)
+
+CORE:Log("Sailor VFX Balanceado carregado")
