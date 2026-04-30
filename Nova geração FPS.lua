@@ -683,3 +683,96 @@ CORE:On("VFXExtreme", function(state)
 end)
 
 CORE:Log("Parte 6 carregada (VFX EXTREMO)")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - PARTE 7
+-- FPS STABILIZER PRO (ANTI DROP)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local RunService = game:GetService("RunService")
+
+-- =========================
+-- CONFIG
+-- =========================
+
+local TARGET_FPS = 50
+local CHECK_INTERVAL = 0.5
+
+local Active = false
+local Running = false
+
+local lastTime = tick()
+local frameCount = 0
+local currentFPS = 60
+
+-- =========================
+-- CALCULAR FPS REAL
+-- =========================
+
+RunService.RenderStepped:Connect(function()
+	frameCount += 1
+end)
+
+local function updateFPS()
+	local now = tick()
+	local delta = now - lastTime
+
+	if delta >= 1 then
+		currentFPS = math.floor(frameCount / delta)
+		frameCount = 0
+		lastTime = now
+	end
+end
+
+-- =========================
+-- SISTEMA INTELIGENTE
+-- =========================
+
+local function startStabilizer()
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+			updateFPS()
+
+			-- DETECTAR QUEDA
+			if currentFPS < TARGET_FPS then
+				
+				-- ativa modo extremo automaticamente
+				if not CORE:Get("VFXExtreme") then
+					CORE:Set("VFXExtreme", true)
+				end
+
+				-- garante low render
+				if not CORE:Get("LowRender") then
+					CORE:Set("LowRender", true)
+				end
+
+			end
+
+			task.wait(CHECK_INTERVAL)
+		end
+
+		Running = false
+	end)
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+CORE:CreateToggle("FPS Stabilizer (Anti Drop)", "FPSStabilizer")
+
+CORE:On("FPSStabilizer", function(state)
+	Active = state
+
+	if state then
+		startStabilizer()
+	end
+end)
+
+CORE:Log("Parte 7 carregada (FPS STABILIZER)")
