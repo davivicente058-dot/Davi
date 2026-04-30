@@ -237,12 +237,62 @@ end
 
 CORE:Log("Sistema iniciado | Device: "..CORE.Device)
 
+-- =========================================
+-- FPS ULTRA NEXT GEN - PARTE 2
+-- Otimização inicial leve e eficiente
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+
 -- =========================
--- EXEMPLOS (PODE REMOVER DPS)
+-- BACKUP ORIGINAL
 -- =========================
 
-CORE:CreateToggle("Modo Teste", "TestMode")
+local Backup = {
+	Brightness = Lighting.Brightness,
+	GlobalShadows = Lighting.GlobalShadows,
+	FogEnd = Lighting.FogEnd
+}
 
-CORE:On("TestMode", function(state)
-	CORE:Log("Modo Teste: "..tostring(state))
+-- =========================
+-- OTIMIZAÇÃO 1: LIGHT REDUCE
+-- =========================
+
+CORE:CreateToggle("Reduzir Iluminação", "LightReduce")
+
+CORE:On("LightReduce", function(state)
+	if state then
+		Lighting.Brightness = 1
+		Lighting.GlobalShadows = false
+		Lighting.FogEnd = 1e6
+	else
+		Lighting.Brightness = Backup.Brightness
+		Lighting.GlobalShadows = Backup.GlobalShadows
+		Lighting.FogEnd = Backup.FogEnd
+	end
 end)
+
+-- =========================
+-- OTIMIZAÇÃO 2: CLEAN EFFECTS (LEVE)
+-- =========================
+
+CORE:CreateToggle("Limpeza Leve de Efeitos", "CleanEffects")
+
+CORE:On("CleanEffects", function(state)
+	if not state then return end
+
+	-- roda UMA VEZ só (não fica em loop pesado)
+	task.spawn(function()
+		for _, obj in ipairs(Workspace:GetDescendants()) do
+			if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+				obj.Enabled = false
+			end
+		end
+	end)
+end)
+
+CORE:Log("Parte 2 carregada")
