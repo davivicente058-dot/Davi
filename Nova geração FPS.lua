@@ -296,3 +296,91 @@ CORE:On("CleanEffects", function(state)
 end)
 
 CORE:Log("Parte 2 carregada")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - PARTE 3
+-- Low Render + Redução Gráfica Real
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Workspace = game:GetService("Workspace")
+
+-- =========================
+-- BACKUP
+-- =========================
+
+local OriginalMaterials = {}
+local OriginalTextures = {}
+
+-- =========================
+-- FUNÇÃO: LOW RENDER
+-- =========================
+
+local function applyLowRender(state)
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		
+		-- PARTES (MATERIAL)
+		if obj:IsA("BasePart") then
+			if state then
+				if not OriginalMaterials[obj] then
+					OriginalMaterials[obj] = obj.Material
+				end
+				obj.Material = Enum.Material.Plastic
+			else
+				if OriginalMaterials[obj] then
+					obj.Material = OriginalMaterials[obj]
+				end
+			end
+		end
+
+		-- TEXTURAS / DECALS
+		if obj:IsA("Decal") or obj:IsA("Texture") then
+			if state then
+				if not OriginalTextures[obj] then
+					OriginalTextures[obj] = obj.Transparency
+				end
+				obj.Transparency = 1
+			else
+				if OriginalTextures[obj] then
+					obj.Transparency = OriginalTextures[obj]
+				end
+			end
+		end
+
+	end
+end
+
+-- =========================
+-- TOGGLE 1: LOW RENDER
+-- =========================
+
+CORE:CreateToggle("Modo Gráfico PvP", "LowRender")
+
+CORE:On("LowRender", function(state)
+	task.spawn(function()
+		applyLowRender(state)
+	end)
+end)
+
+-- =========================
+-- TOGGLE 2: OTIMIZAÇÃO DE PARTES
+-- =========================
+
+CORE:CreateToggle("Reduzir Peso das Partes", "PartOptimize")
+
+CORE:On("PartOptimize", function(state)
+	if not state then return end
+
+	task.spawn(function()
+		for _, obj in ipairs(Workspace:GetDescendants()) do
+			if obj:IsA("BasePart") then
+				obj.Reflectance = 0
+				obj.CastShadow = false
+			end
+		end
+	end)
+end)
+
+CORE:Log("Parte 3 carregada")
