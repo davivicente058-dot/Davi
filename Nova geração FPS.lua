@@ -298,8 +298,8 @@ end)
 CORE:Log("Parte 2 carregada")
 
 -- =========================================
--- FPS ULTRA NEXT GEN - PARTE 3
--- Low Render + Redução Gráfica Real
+-- FPS ULTRA NEXT GEN - PARTE 3 (FIX)
+-- Low Render otimizado e seguro
 -- =========================================
 
 local CORE = _G.FPS_CORE
@@ -308,48 +308,57 @@ if not CORE then return end
 local Workspace = game:GetService("Workspace")
 
 -- =========================
--- BACKUP
+-- CONTROLE
 -- =========================
 
-local OriginalMaterials = {}
-local OriginalTextures = {}
+local LowRenderActive = false
+local Processing = false
 
 -- =========================
--- FUNÇÃO: LOW RENDER
+-- FUNÇÃO OTIMIZADA
 -- =========================
 
-local function applyLowRender(state)
-	for _, obj in ipairs(Workspace:GetDescendants()) do
-		
-		-- PARTES (MATERIAL)
-		if obj:IsA("BasePart") then
-			if state then
-				if not OriginalMaterials[obj] then
-					OriginalMaterials[obj] = obj.Material
-				end
+local function processBatch(list, startIndex, batchSize)
+	for i = startIndex, math.min(startIndex + batchSize, #list) do
+		local obj = list[i]
+
+		if obj then
+			-- PARTES
+			if obj:IsA("BasePart") then
 				obj.Material = Enum.Material.Plastic
-			else
-				if OriginalMaterials[obj] then
-					obj.Material = OriginalMaterials[obj]
-				end
+				obj.Reflectance = 0
+				obj.CastShadow = false
 			end
-		end
 
-		-- TEXTURAS / DECALS
-		if obj:IsA("Decal") or obj:IsA("Texture") then
-			if state then
-				if not OriginalTextures[obj] then
-					OriginalTextures[obj] = obj.Transparency
-				end
+			-- TEXTURAS
+			if obj:IsA("Decal") or obj:IsA("Texture") then
 				obj.Transparency = 1
-			else
-				if OriginalTextures[obj] then
-					obj.Transparency = OriginalTextures[obj]
-				end
 			end
 		end
-
 	end
+end
+
+-- =========================
+-- LOW RENDER INTELIGENTE
+-- =========================
+
+local function applyLowRender()
+	if Processing then return end
+	Processing = true
+
+	local objects = Workspace:GetDescendants()
+	local index = 1
+	local batchSize = 200
+
+	task.spawn(function()
+		while index <= #objects and LowRenderActive do
+			processBatch(objects, index, batchSize)
+			index += batchSize
+			task.wait()
+		end
+
+		Processing = false
+	end)
 end
 
 -- =========================
@@ -359,13 +368,15 @@ end
 CORE:CreateToggle("Modo Gráfico PvP", "LowRender")
 
 CORE:On("LowRender", function(state)
-	task.spawn(function()
-		applyLowRender(state)
-	end)
+	LowRenderActive = state
+
+	if state then
+		applyLowRender()
+	end
 end)
 
 -- =========================
--- TOGGLE 2: OTIMIZAÇÃO DE PARTES
+-- TOGGLE 2: PART OPTIMIZE (LEVE)
 -- =========================
 
 CORE:CreateToggle("Reduzir Peso das Partes", "PartOptimize")
@@ -376,11 +387,10 @@ CORE:On("PartOptimize", function(state)
 	task.spawn(function()
 		for _, obj in ipairs(Workspace:GetDescendants()) do
 			if obj:IsA("BasePart") then
-				obj.Reflectance = 0
 				obj.CastShadow = false
 			end
 		end
 	end)
 end)
 
-CORE:Log("Parte 3 carregada")
+CORE:Log("Parte 3 FIX carregada")
