@@ -1,17 +1,19 @@
 -- =========================================
--- DZ PERFORMANCE - UI BASE (ULTRA LEVE)
+-- DZ PERFORMANCE - UI BASE V2 (DRAG + MINI)
 -- =========================================
 
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local gui = Instance.new("ScreenGui")
+local UserInputService = game:GetService("UserInputService")
 
+local player = Players.LocalPlayer
+
+local gui = Instance.new("ScreenGui")
 gui.Name = "DZ_UI"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 -- =========================
--- MAIN FRAME
+-- MAIN
 -- =========================
 
 local main = Instance.new("Frame")
@@ -24,7 +26,7 @@ main.Parent = gui
 Instance.new("UICorner", main).CornerRadius = UDim.new(0,8)
 
 -- =========================
--- TITLE BAR
+-- TITLE
 -- =========================
 
 local title = Instance.new("TextLabel")
@@ -32,12 +34,12 @@ title.Size = UDim2.new(1,0,0,30)
 title.BackgroundTransparency = 1
 title.Text = "DZ Performance"
 title.TextColor3 = Color3.new(1,1,1)
-title.Font = Enum.Font.SourceSansBold
-title.TextSize = 16
+title.Font = Enum.Font.GothamBold
+title.TextSize = 15
 title.Parent = main
 
 -- =========================
--- BOTÕES (MINIMIZAR / FECHAR)
+-- BOTÕES
 -- =========================
 
 local minimize = Instance.new("TextButton")
@@ -71,7 +73,7 @@ layout.Padding = UDim.new(0,6)
 layout.Parent = container
 
 -- =========================
--- MODO MINIMIZADO (DZ)
+-- MINI QUADRADO DZ (DRAG)
 -- =========================
 
 local mini = Instance.new("TextButton")
@@ -80,18 +82,67 @@ mini.Position = main.Position
 mini.BackgroundColor3 = Color3.fromRGB(0,0,0)
 mini.Text = "DZ"
 mini.TextColor3 = Color3.new(1,1,1)
+mini.Font = Enum.Font.GothamBlack
+mini.TextSize = 18
 mini.Visible = false
 mini.Parent = gui
 
-Instance.new("UICorner", mini).CornerRadius = UDim.new(1,0)
+Instance.new("UICorner", mini).CornerRadius = UDim.new(0,8)
 
 -- =========================
--- SISTEMA DE TOGGLE (SWITCH)
+-- DRAG SYSTEM (MAIN + MINI)
 -- =========================
 
-local Toggles = {}
+local function makeDraggable(frame)
+
+	local dragging = false
+	local dragInput, startPos, startFramePos
+
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 
+		or input.UserInputType == Enum.UserInputType.Touch then
+			
+			dragging = true
+			startPos = input.Position
+			startFramePos = frame.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	frame.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement 
+		or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - startPos
+			frame.Position = UDim2.new(
+				startFramePos.X.Scale,
+				startFramePos.X.Offset + delta.X,
+				startFramePos.Y.Scale,
+				startFramePos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+makeDraggable(main)
+makeDraggable(mini)
+
+-- =========================
+-- TOGGLE SYSTEM (SWITCH)
+-- =========================
 
 local function createToggle(name, callback)
+
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(1,-10,0,35)
 	frame.BackgroundTransparency = 1
@@ -102,7 +153,8 @@ local function createToggle(name, callback)
 	label.BackgroundTransparency = 1
 	label.Text = name
 	label.TextColor3 = Color3.new(1,1,1)
-	label.TextSize = 14
+	label.Font = Enum.Font.Gotham
+	label.TextSize = 13
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = frame
 
@@ -140,12 +192,10 @@ local function createToggle(name, callback)
 			callback(state)
 		end
 	end)
-
-	Toggles[name] = true
 end
 
 -- =========================
--- CONTROLES UI
+-- CONTROLES
 -- =========================
 
 minimize.MouseButton1Click:Connect(function()
