@@ -1171,8 +1171,7 @@ end)
 CORE:Log("Sailor VFX Balanceado carregado")
 
 -- =========================================
--- FPS ULTRA NEXT GEN - RENDER BOOST REAL
--- Reduz o que está longe (GANHO REAL DE FPS)
+-- RENDER BOOST (FIX SEGURO)
 -- =========================================
 
 local CORE = _G.FPS_CORE
@@ -1186,12 +1185,7 @@ local player = Players.LocalPlayer
 local Active = false
 local Running = false
 
--- distância máxima
-local MAX_DISTANCE = 120
-
--- =========================
--- PEGAR POSIÇÃO
--- =========================
+local MAX_DISTANCE = 150
 
 local function getPos()
 	local char = player.Character
@@ -1199,10 +1193,6 @@ local function getPos()
 		return char.HumanoidRootPart.Position
 	end
 end
-
--- =========================
--- SISTEMA PRINCIPAL
--- =========================
 
 local function process()
 	if Running then return end
@@ -1213,44 +1203,28 @@ local function process()
 			local pos = getPos()
 
 			if pos then
-				local objects = Workspace:GetDescendants()
+				for _, obj in ipairs(Workspace:GetDescendants()) do
+					if obj:IsA("BasePart") then
+						local dist = (obj.Position - pos).Magnitude
 
-				for i = 1, #objects, 200 do
-					if not Active then break end
-
-					for j = i, math.min(i + 199, #objects) do
-						local obj = objects[j]
-
-						if obj and obj:IsA("BasePart") then
-							local dist = (obj.Position - pos).Magnitude
-
-							if dist > MAX_DISTANCE then
-								obj.LocalTransparencyModifier = 1
-								obj.CanCollide = false
-							else
-								obj.LocalTransparencyModifier = 0
-							end
+						if dist > MAX_DISTANCE then
+							obj.CastShadow = false
+							obj.Material = Enum.Material.Plastic
 						end
 					end
-
-					task.wait()
 				end
 			end
 
-			task.wait(1)
+			task.wait(2)
 		end
 
 		Running = false
 	end)
 end
 
--- =========================
--- TOGGLE
--- =========================
+CORE:CreateToggle("Render Boost (Seguro)", "RenderBoostSafe")
 
-CORE:CreateToggle("Render Boost (Distância)", "RenderBoost")
-
-CORE:On("RenderBoost", function(state)
+CORE:On("RenderBoostSafe", function(state)
 	Active = state
 
 	if state then
@@ -1258,11 +1232,8 @@ CORE:On("RenderBoost", function(state)
 	end
 end)
 
-CORE:Log("Render Boost carregado")
-
 -- =========================================
--- FPS ULTRA NEXT GEN - AUTO PERFORMANCE
--- Sistema adaptativo inteligente (PRO)
+-- AUTO PERFORMANCE (FIX)
 -- =========================================
 
 local CORE = _G.FPS_CORE
@@ -1273,13 +1244,9 @@ local RunService = game:GetService("RunService")
 local Active = false
 local Running = false
 
--- =========================
--- FPS TRACKER
--- =========================
-
+local fps = 60
 local frames = 0
 local last = tick()
-local currentFPS = 60
 
 RunService.RenderStepped:Connect(function()
 	frames += 1
@@ -1287,42 +1254,37 @@ end)
 
 local function updateFPS()
 	if tick() - last >= 1 then
-		currentFPS = frames
+		fps = frames
 		frames = 0
 		last = tick()
 	end
 end
 
--- =========================
--- NÍVEIS DE OTIMIZAÇÃO
--- =========================
+local currentLevel = 0
 
-local level = 0
+local function apply(level)
+	if currentLevel == level then return end
+	currentLevel = level
 
-local function applyLevel(newLevel)
-	if level == newLevel then return end
-	level = newLevel
+	-- limpa antes
+	CORE:Set("VFXBalanced", false)
+	CORE:Set("VFXPro", false)
+	CORE:Set("VFXExtreme", false)
+	CORE:Set("VFXZero", false)
 
 	if level == 1 then
 		CORE:Set("VFXBalanced", true)
 
 	elseif level == 2 then
 		CORE:Set("VFXPro", true)
-		CORE:Set("LowRender", true)
 
 	elseif level == 3 then
 		CORE:Set("VFXExtreme", true)
-		CORE:Set("RenderBoost", true)
 
-	elseif level >= 4 then
+	elseif level == 4 then
 		CORE:Set("VFXZero", true)
-		CORE:Set("LightReduce", true)
 	end
 end
-
--- =========================
--- LOOP INTELIGENTE
--- =========================
 
 local function start()
 	if Running then return end
@@ -1332,21 +1294,20 @@ local function start()
 		while Active do
 			updateFPS()
 
-			-- lógica adaptativa
-			if currentFPS > 55 then
-				applyLevel(0)
+			if fps > 50 then
+				apply(0)
 
-			elseif currentFPS > 45 then
-				applyLevel(1)
+			elseif fps > 40 then
+				apply(1)
 
-			elseif currentFPS > 35 then
-				applyLevel(2)
+			elseif fps > 30 then
+				apply(2)
 
-			elseif currentFPS > 25 then
-				applyLevel(3)
+			elseif fps > 20 then
+				apply(3)
 
 			else
-				applyLevel(4)
+				apply(4)
 			end
 
 			task.wait(1)
@@ -1356,18 +1317,12 @@ local function start()
 	end)
 end
 
--- =========================
--- TOGGLE
--- =========================
+CORE:CreateToggle("Auto Performance (Seguro)", "AutoPerfSafe")
 
-CORE:CreateToggle("Auto Performance (PRO)", "AutoPerf")
-
-CORE:On("AutoPerf", function(state)
+CORE:On("AutoPerfSafe", function(state)
 	Active = state
 
 	if state then
 		start()
 	end
 end)
-
-CORE:Log("Auto Performance carregado")
