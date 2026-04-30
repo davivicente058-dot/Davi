@@ -1169,3 +1169,205 @@ CORE:On("SailorBalanced", function(state)
 end)
 
 CORE:Log("Sailor VFX Balanceado carregado")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - RENDER BOOST REAL
+-- Reduz o que está longe (GANHO REAL DE FPS)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+
+local Active = false
+local Running = false
+
+-- distância máxima
+local MAX_DISTANCE = 120
+
+-- =========================
+-- PEGAR POSIÇÃO
+-- =========================
+
+local function getPos()
+	local char = player.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		return char.HumanoidRootPart.Position
+	end
+end
+
+-- =========================
+-- SISTEMA PRINCIPAL
+-- =========================
+
+local function process()
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+			local pos = getPos()
+
+			if pos then
+				local objects = Workspace:GetDescendants()
+
+				for i = 1, #objects, 200 do
+					if not Active then break end
+
+					for j = i, math.min(i + 199, #objects) do
+						local obj = objects[j]
+
+						if obj and obj:IsA("BasePart") then
+							local dist = (obj.Position - pos).Magnitude
+
+							if dist > MAX_DISTANCE then
+								obj.LocalTransparencyModifier = 1
+								obj.CanCollide = false
+							else
+								obj.LocalTransparencyModifier = 0
+							end
+						end
+					end
+
+					task.wait()
+				end
+			end
+
+			task.wait(1)
+		end
+
+		Running = false
+	end)
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+CORE:CreateToggle("Render Boost (Distância)", "RenderBoost")
+
+CORE:On("RenderBoost", function(state)
+	Active = state
+
+	if state then
+		process()
+	end
+end)
+
+CORE:Log("Render Boost carregado")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - AUTO PERFORMANCE
+-- Sistema adaptativo inteligente (PRO)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local RunService = game:GetService("RunService")
+
+local Active = false
+local Running = false
+
+-- =========================
+-- FPS TRACKER
+-- =========================
+
+local frames = 0
+local last = tick()
+local currentFPS = 60
+
+RunService.RenderStepped:Connect(function()
+	frames += 1
+end)
+
+local function updateFPS()
+	if tick() - last >= 1 then
+		currentFPS = frames
+		frames = 0
+		last = tick()
+	end
+end
+
+-- =========================
+-- NÍVEIS DE OTIMIZAÇÃO
+-- =========================
+
+local level = 0
+
+local function applyLevel(newLevel)
+	if level == newLevel then return end
+	level = newLevel
+
+	if level == 1 then
+		CORE:Set("VFXBalanced", true)
+
+	elseif level == 2 then
+		CORE:Set("VFXPro", true)
+		CORE:Set("LowRender", true)
+
+	elseif level == 3 then
+		CORE:Set("VFXExtreme", true)
+		CORE:Set("RenderBoost", true)
+
+	elseif level >= 4 then
+		CORE:Set("VFXZero", true)
+		CORE:Set("LightReduce", true)
+	end
+end
+
+-- =========================
+-- LOOP INTELIGENTE
+-- =========================
+
+local function start()
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+			updateFPS()
+
+			-- lógica adaptativa
+			if currentFPS > 55 then
+				applyLevel(0)
+
+			elseif currentFPS > 45 then
+				applyLevel(1)
+
+			elseif currentFPS > 35 then
+				applyLevel(2)
+
+			elseif currentFPS > 25 then
+				applyLevel(3)
+
+			else
+				applyLevel(4)
+			end
+
+			task.wait(1)
+		end
+
+		Running = false
+	end)
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+CORE:CreateToggle("Auto Performance (PRO)", "AutoPerf")
+
+CORE:On("AutoPerf", function(state)
+	Active = state
+
+	if state then
+		start()
+	end
+end)
+
+CORE:Log("Auto Performance carregado")
