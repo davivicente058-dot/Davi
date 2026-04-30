@@ -467,3 +467,123 @@ CORE:On("DelayReduce", function(state)
 end)
 
 CORE:Log("Parte 4 carregada")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - PARTE 5
+-- VFX REDUCER PRO (INTELIGENTE)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- =========================
+-- CONFIG
+-- =========================
+
+local DISTANCE_LIMIT = 80
+
+local Active = false
+local Running = false
+
+-- =========================
+-- PEGAR POSIÇÃO DO PLAYER
+-- =========================
+
+local function getPlayerPos()
+	local char = LocalPlayer.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		return char.HumanoidRootPart.Position
+	end
+	return nil
+end
+
+-- =========================
+-- PROCESSAMENTO INTELIGENTE
+-- =========================
+
+local function processVFX()
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+			local playerPos = getPlayerPos()
+
+			if playerPos then
+				local objects = Workspace:GetDescendants()
+
+				for i = 1, #objects, 150 do
+					if not Active then break end
+
+					for j = i, math.min(i + 149, #objects) do
+						local obj = objects[j]
+
+						if obj then
+							local parent = obj.Parent
+
+							-- distância
+							local dist = math.huge
+							if parent and parent:IsA("BasePart") then
+								dist = (parent.Position - playerPos).Magnitude
+							elseif parent and parent:FindFirstChild("HumanoidRootPart") then
+								dist = (parent.HumanoidRootPart.Position - playerPos).Magnitude
+							end
+
+							-- PARTICLES
+							if obj:IsA("ParticleEmitter") then
+								if dist > DISTANCE_LIMIT then
+									obj.Enabled = false
+								else
+									obj.Rate = math.min(obj.Rate, 5)
+								end
+							end
+
+							-- TRAILS
+							if obj:IsA("Trail") then
+								obj.Enabled = dist < DISTANCE_LIMIT
+							end
+
+							-- BEAMS
+							if obj:IsA("Beam") then
+								obj.Enabled = false
+							end
+
+							-- EXPLOSIONS
+							if obj:IsA("Explosion") then
+								obj.BlastPressure = 0
+								obj.BlastRadius = 0
+							end
+						end
+					end
+
+					task.wait()
+				end
+			end
+
+			task.wait(1.5) -- intervalo inteligente (não pesa)
+		end
+
+		Running = false
+	end)
+end
+
+-- =========================
+-- TOGGLE PRINCIPAL
+-- =========================
+
+CORE:CreateToggle("VFX Reducer PRO", "VFXPro")
+
+CORE:On("VFXPro", function(state)
+	Active = state
+
+	if state then
+		processVFX()
+	end
+end)
+
+CORE:Log("Parte 5 carregada (VFX PRO)")
