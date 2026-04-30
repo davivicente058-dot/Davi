@@ -218,3 +218,89 @@ end)
 
 _G.DZ = {}
 _G.DZ.CreateToggle = createToggle
+
+-- =========================================
+-- DZ PERFORMANCE - MODO CASUAL (OTIMIZADO)
+-- =========================================
+
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+local Active = false
+local Running = false
+
+-- =========================
+-- OTIMIZAÇÃO LEVE
+-- =========================
+
+local function optimizeBatch(objects, startIndex, batchSize)
+	for i = startIndex, math.min(startIndex + batchSize - 1, #objects) do
+		local obj = objects[i]
+
+		if obj and obj:IsA("BasePart") then
+			
+			-- REMOVE SOMBRA PESADA
+			if obj.CastShadow then
+				obj.CastShadow = false
+			end
+
+			-- SIMPLIFICA MATERIAL (SEM QUEBRAR TUDO)
+			if obj.Material ~= Enum.Material.Plastic then
+				obj.Material = Enum.Material.SmoothPlastic
+			end
+
+			-- MICRO AJUSTE VISUAL (leve)
+			if obj.Reflectance > 0 then
+				obj.Reflectance = 0
+			end
+
+		end
+	end
+end
+
+-- =========================
+-- LOOP INTELIGENTE
+-- =========================
+
+local function start()
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+
+			local objects = Workspace:GetDescendants()
+			local batchSize = 120
+
+			for i = 1, #objects, batchSize do
+				if not Active then break end
+
+				optimizeBatch(objects, i, batchSize)
+
+				task.wait() -- ESSENCIAL (anti travamento)
+			end
+
+			task.wait(2) -- intervalo leve (sem spam)
+		end
+
+		Running = false
+	end)
+end
+
+local function stop()
+	-- não precisa resetar (evita lag)
+end
+
+-- =========================
+-- TOGGLE UI
+-- =========================
+
+_G.DZ.CreateToggle("Modo Casual (FPS + Fluidez)", function(state)
+	Active = state
+
+	if state then
+		start()
+	else
+		stop()
+	end
+end)
