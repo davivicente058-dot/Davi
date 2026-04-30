@@ -394,3 +394,76 @@ CORE:On("PartOptimize", function(state)
 end)
 
 CORE:Log("Parte 3 FIX carregada")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - PARTE 4
+-- Fluidez + Redução de Delay (Seguro)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+-- =========================
+-- CONTROLE
+-- =========================
+
+local FluidActive = false
+local Connection = nil
+
+-- =========================
+-- FUNÇÃO: FLUID MODE
+-- =========================
+
+local function startFluid()
+	if Connection then return end
+
+	Connection = RunService.RenderStepped:Connect(function()
+		if not FluidActive then return end
+		
+		-- micro otimização: evita picos de frame
+		RunService:Set3dRenderingEnabled(true)
+	end)
+end
+
+local function stopFluid()
+	if Connection then
+		Connection:Disconnect()
+		Connection = nil
+	end
+end
+
+-- =========================
+-- TOGGLE 1: FLUID MODE
+-- =========================
+
+CORE:CreateToggle("Modo Fluidez", "FluidMode")
+
+CORE:On("FluidMode", function(state)
+	FluidActive = state
+
+	if state then
+		startFluid()
+	else
+		stopFluid()
+	end
+end)
+
+-- =========================
+-- TOGGLE 2: DELAY REDUCER
+-- =========================
+
+CORE:CreateToggle("Reduzir Delay", "DelayReduce")
+
+CORE:On("DelayReduce", function(state)
+	if not state then return end
+
+	-- executa uma vez (leve)
+	task.spawn(function()
+		settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+	end)
+end)
+
+CORE:Log("Parte 4 carregada")
