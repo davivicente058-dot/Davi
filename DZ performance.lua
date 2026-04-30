@@ -304,3 +304,143 @@ _G.DZ.CreateToggle("Modo Casual (FPS + Fluidez)", function(state)
 		stop()
 	end
 end)
+
+-- =========================================
+-- DZ PERFORMANCE - MODO COMPETITIVO (PRO)
+-- =========================================
+
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+local Active = false
+local Running = false
+local Connection = nil
+
+-- =========================
+-- OTIMIZAÇÃO INSTANTÂNEA
+-- =========================
+
+local function optimizeObject(obj)
+
+	-- PARTES
+	if obj:IsA("BasePart") then
+		obj.CastShadow = false
+		obj.Material = Enum.Material.SmoothPlastic
+		obj.Reflectance = 0
+	end
+
+	-- VFX (redução inteligente)
+	if obj:IsA("ParticleEmitter") then
+		obj.Rate = math.min(obj.Rate, 6)
+	end
+
+	if obj:IsA("Trail") then
+		obj.Lifetime = 0.08
+	end
+
+	if obj:IsA("Beam") then
+		obj.Width0 = 0.1
+		obj.Width1 = 0.1
+	end
+
+	-- LUZES
+	if obj:IsA("PointLight") or obj:IsA("SpotLight") then
+		obj.Brightness = 0.5
+	end
+end
+
+-- =========================
+-- PROCESSO EM LOTE (ANTI LAG)
+-- =========================
+
+local function processBatch()
+
+	local objects = Workspace:GetDescendants()
+	local batchSize = 150
+
+	for i = 1, #objects, batchSize do
+		if not Active then break end
+
+		for j = i, math.min(i + batchSize - 1, #objects) do
+			local obj = objects[j]
+			if obj then
+				optimizeObject(obj)
+			end
+		end
+
+		task.wait()
+	end
+end
+
+-- =========================
+-- NOVOS OBJETOS (IMPORTANTE)
+-- =========================
+
+local function hookNewObjects()
+
+	if Connection then return end
+
+	Connection = Workspace.DescendantAdded:Connect(function(obj)
+		if Active then
+			task.defer(function()
+				optimizeObject(obj)
+			end)
+		end
+	end)
+end
+
+local function unhook()
+	if Connection then
+		Connection:Disconnect()
+		Connection = nil
+	end
+end
+
+-- =========================
+-- LOOP ESTÁVEL (ANTI DROP)
+-- =========================
+
+local function start()
+
+	if Running then return end
+	Running = true
+
+	hookNewObjects()
+
+	task.spawn(function()
+		while Active do
+			
+			processBatch()
+
+			task.wait(2) -- evita spam
+		end
+
+		unhook()
+		Running = false
+	end)
+
+	-- micro estabilidade
+	RunService.Heartbeat:Connect(function()
+		if Active then
+			RunService:Set3dRenderingEnabled(true)
+		end
+	end)
+end
+
+local function stop()
+	unhook()
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+_G.DZ.CreateToggle("Modo Competitivo (FPS + Estabilidade)", function(state)
+	Active = state
+
+	if state then
+		start()
+	else
+		stop()
+	end
+end)
