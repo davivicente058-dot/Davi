@@ -444,3 +444,162 @@ _G.DZ.CreateToggle("Modo Competitivo (FPS + Estabilidade)", function(state)
 		stop()
 	end
 end)
+
+-- =========================================
+-- DZ PERFORMANCE - MODO BATATA (EXTREMO)
+-- =========================================
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+local Active = false
+local Running = false
+local Connection = nil
+
+-- =========================
+-- OTIMIZAÇÃO EXTREMA
+-- =========================
+
+local function optimize(obj)
+
+	-- PARTES (mínimo possível)
+	if obj:IsA("BasePart") then
+		obj.CastShadow = false
+		obj.Material = Enum.Material.Plastic
+		obj.Reflectance = 0
+	end
+
+	-- VFX QUASE ZERO
+	if obj:IsA("ParticleEmitter") then
+		obj.Rate = 1
+	end
+
+	if obj:IsA("Trail") then
+		obj.Enabled = false
+	end
+
+	if obj:IsA("Beam") then
+		obj.Enabled = false
+	end
+
+	-- LUZES
+	if obj:IsA("PointLight") or obj:IsA("SpotLight") then
+		obj.Brightness = 0
+	end
+end
+
+-- =========================
+-- LIMPAR PLAYERS (ROUPAS)
+-- =========================
+
+local function cleanCharacter(char)
+
+	for _, v in ipairs(char:GetDescendants()) do
+		
+		-- remove roupas
+		if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+			v:Destroy()
+		end
+
+		-- remove acessórios
+		if v:IsA("Accessory") then
+			v:Destroy()
+		end
+
+	end
+end
+
+-- =========================
+-- PROCESSO EM LOTE
+-- =========================
+
+local function process()
+
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+			
+			local objects = Workspace:GetDescendants()
+			local batch = 200
+
+			for i = 1, #objects, batch do
+				if not Active then break end
+
+				for j = i, math.min(i + batch - 1, #objects) do
+					local obj = objects[j]
+					if obj then
+						optimize(obj)
+					end
+				end
+
+				task.wait()
+			end
+
+			task.wait(2)
+		end
+
+		Running = false
+	end)
+end
+
+-- =========================
+-- NOVOS OBJETOS
+-- =========================
+
+local function hook()
+
+	if Connection then return end
+
+	Connection = Workspace.DescendantAdded:Connect(function(obj)
+		if Active then
+			task.defer(function()
+				optimize(obj)
+			end)
+		end
+	end)
+end
+
+local function unhook()
+	if Connection then
+		Connection:Disconnect()
+		Connection = nil
+	end
+end
+
+-- =========================
+-- PLAYERS
+-- =========================
+
+local function setupPlayers()
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr.Character then
+			cleanCharacter(plr.Character)
+		end
+
+		plr.CharacterAdded:Connect(function(char)
+			if Active then
+				task.wait(1)
+				cleanCharacter(char)
+			end
+		end)
+	end
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+_G.DZ.CreateToggle("Modo Batata (Ultra FPS)", function(state)
+	Active = state
+
+	if state then
+		setupPlayers()
+		process()
+		hook()
+	else
+		unhook()
+	end
+end)
