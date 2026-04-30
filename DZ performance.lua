@@ -603,3 +603,74 @@ _G.DZ.CreateToggle("Modo Batata (Ultra FPS)", function(state)
 		unhook()
 	end
 end)
+
+-- =========================================
+-- DZ PERFORMANCE - FPS REAL (PRECISO)
+-- =========================================
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local gui = player:WaitForChild("PlayerGui"):WaitForChild("DZ_UI")
+
+local Active = false
+
+-- =========================
+-- UI FPS
+-- =========================
+
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Size = UDim2.new(0,120,0,30)
+fpsLabel.Position = UDim2.new(0,10,1,-40)
+fpsLabel.BackgroundColor3 = Color3.fromRGB(0,0,0)
+fpsLabel.BackgroundTransparency = 0.3
+fpsLabel.TextColor3 = Color3.new(1,1,1)
+fpsLabel.Text = "FPS: 0"
+fpsLabel.Font = Enum.Font.GothamBold
+fpsLabel.TextSize = 14
+fpsLabel.Visible = false
+fpsLabel.Parent = gui
+
+Instance.new("UICorner", fpsLabel).CornerRadius = UDim.new(0,6)
+
+-- =========================
+-- SISTEMA FPS REAL
+-- =========================
+
+local frames = 0
+local lastTime = tick()
+local fps = 0
+
+RunService.RenderStepped:Connect(function()
+	if Active then
+		frames += 1
+	end
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+
+		if Active then
+			local now = tick()
+			local delta = now - lastTime
+
+			fps = math.floor(frames / delta)
+
+			frames = 0
+			lastTime = now
+
+			fpsLabel.Text = "FPS: " .. fps
+		end
+	end
+end)
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+_G.DZ.CreateToggle("Mostrar FPS (Real)", function(state)
+	Active = state
+	fpsLabel.Visible = state
+end)
