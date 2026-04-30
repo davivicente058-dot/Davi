@@ -776,3 +776,190 @@ CORE:On("FPSStabilizer", function(state)
 end)
 
 CORE:Log("Parte 7 carregada (FPS STABILIZER)")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - PARTE FINAL
+-- HUD + FPS REAL + REFINAMENTO
+-- =========================================
+
+local CORE = _G.FPS_CORE
+if not CORE then return end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- =========================
+-- GUI FPS
+-- =========================
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "FPS_HUD"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Size = UDim2.new(0,120,0,30)
+fpsLabel.Position = UDim2.new(0,10,1,-40)
+fpsLabel.BackgroundTransparency = 1
+fpsLabel.TextColor3 = Color3.new(1,1,1)
+fpsLabel.TextXAlignment = Enum.TextXAlignment.Left
+fpsLabel.TextScaled = true
+fpsLabel.Font = Enum.Font.SourceSansBold
+fpsLabel.Text = "FPS: ..."
+fpsLabel.Parent = gui
+
+-- =========================
+-- FPS REAL
+-- =========================
+
+local frames = 0
+local last = tick()
+
+RunService.RenderStepped:Connect(function()
+	frames += 1
+
+	if tick() - last >= 1 then
+		local fps = frames
+		frames = 0
+		last = tick()
+
+		fpsLabel.Text = "FPS: "..fps
+
+		-- cor dinâmica
+		if fps >= 50 then
+			fpsLabel.TextColor3 = Color3.fromRGB(0,255,0)
+		elseif fps >= 30 then
+			fpsLabel.TextColor3 = Color3.fromRGB(255,170,0)
+		else
+			fpsLabel.TextColor3 = Color3.fromRGB(255,0,0)
+		end
+	end
+end)
+
+-- =========================
+-- INDICADOR DE MODO
+-- =========================
+
+local modeLabel = Instance.new("TextLabel")
+modeLabel.Size = UDim2.new(0,180,0,25)
+modeLabel.Position = UDim2.new(0,10,1,-70)
+modeLabel.BackgroundTransparency = 1
+modeLabel.TextColor3 = Color3.new(1,1,1)
+modeLabel.TextXAlignment = Enum.TextXAlignment.Left
+modeLabel.TextScaled = true
+modeLabel.Font = Enum.Font.SourceSans
+modeLabel.Text = "Modo: Normal"
+modeLabel.Parent = gui
+
+-- =========================
+-- ATUALIZA MODO
+-- =========================
+
+local function updateMode()
+	if CORE:Get("VFXExtreme") then
+		modeLabel.Text = "Modo: EXTREMO"
+		modeLabel.TextColor3 = Color3.fromRGB(255,60,60)
+	elseif CORE:Get("VFXPro") then
+		modeLabel.Text = "Modo: VFX PRO"
+		modeLabel.TextColor3 = Color3.fromRGB(255,200,0)
+	else
+		modeLabel.Text = "Modo: Normal"
+		modeLabel.TextColor3 = Color3.fromRGB(200,200,200)
+	end
+end
+
+-- conectar mudanças
+CORE:On("VFXExtreme", updateMode)
+CORE:On("VFXPro", updateMode)
+
+updateMode()
+
+-- =========================
+-- BOTÃO EXTRA (OPCIONAL)
+-- =========================
+
+CORE:CreateButton("Ativar Modo Competitivo", function()
+	CORE:Set("LowRender", true)
+	CORE:Set("PartOptimize", true)
+	CORE:Set("LightReduce", true)
+	CORE:Set("VFXExtreme", true)
+end)
+
+CORE:Log("Script finalizado com sucesso")
+
+-- =========================================
+-- FPS ULTRA NEXT GEN - UI HIDE SYSTEM
+-- Ocultar / Mostrar UI (PvP Friendly)
+-- =========================================
+
+local CORE = _G.FPS_CORE
+local UI = _G.UI
+if not CORE or not UI then return end
+
+local UIS = game:GetService("UserInputService")
+
+-- =========================
+-- REFERÊNCIA DA UI
+-- =========================
+
+local MainUI = nil
+
+-- tenta achar a frame principal
+for _, v in pairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
+	if v.Name == "FPS_UI" then
+		MainUI = v
+	end
+end
+
+if not MainUI then return end
+
+local Visible = true
+
+-- =========================
+-- FUNÇÃO
+-- =========================
+
+local function toggleUI()
+	Visible = not Visible
+	MainUI.Enabled = Visible
+end
+
+-- =========================
+-- BOTÃO NA UI
+-- =========================
+
+CORE:CreateButton("Mostrar / Esconder UI", function()
+	toggleUI()
+end)
+
+-- =========================
+-- ATALHO (PC)
+-- =========================
+
+UIS.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	
+	if input.KeyCode == Enum.KeyCode.RightControl then
+		toggleUI()
+	end
+end)
+
+-- =========================
+-- BOTÃO FLUTUANTE (MOBILE)
+-- =========================
+
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(0,40,0,40)
+btn.Position = UDim2.new(1,-50,0.5,-20)
+btn.Text = "UI"
+btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+btn.TextColor3 = Color3.new(1,1,1)
+btn.Parent = MainUI
+
+btn.MouseButton1Click:Connect(function()
+	toggleUI()
+end)
+
+CORE:Log("Sistema de ocultar UI carregado")
