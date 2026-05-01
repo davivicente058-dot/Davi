@@ -1,4 +1,52 @@
 -- =========================================
+-- DZ PERFORMANCE - INTRO
+-- =========================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+
+local gui = Instance.new("ScreenGui")
+gui.IgnoreGuiInset = true
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local bg = Instance.new("Frame")
+bg.Size = UDim2.new(1,0,1,0)
+bg.BackgroundColor3 = Color3.new(0,0,0)
+bg.Parent = gui
+
+local text = Instance.new("TextLabel")
+text.Size = UDim2.new(1,0,1,0)
+text.BackgroundTransparency = 1
+text.Text = "by DAVIZZIN"
+text.TextColor3 = Color3.new(1,1,1)
+text.TextScaled = true
+text.Font = Enum.Font.GothamBlack
+text.TextTransparency = 1
+text.Parent = bg
+
+-- fade in
+TweenService:Create(text, TweenInfo.new(0.6), {
+	TextTransparency = 0
+}):Play()
+
+task.wait(1.2)
+
+-- fade out
+TweenService:Create(bg, TweenInfo.new(0.8), {
+	BackgroundTransparency = 1
+}):Play()
+
+TweenService:Create(text, TweenInfo.new(0.8), {
+	TextTransparency = 1
+}):Play()
+
+task.wait(0.8)
+
+gui:Destroy()
+
+-- =========================================
 -- DZ PERFORMANCE - UI BASE V2 (DRAG + MINI)
 -- =========================================
 
@@ -878,5 +926,38 @@ _G.DZ.CreateToggle("VFX Dinâmico (Auto FPS)", function(state)
 
 	if state then
 		start()
+	end
+end)
+
+-- =========================================
+-- DZ PERFORMANCE - SMOOTH ENGINE
+-- =========================================
+
+local RunService = game:GetService("RunService")
+
+local Active = true
+local accumulator = 0
+
+-- controle de carga
+RunService.Heartbeat:Connect(function(dt)
+	if not Active then return end
+
+	accumulator += dt
+
+	-- executa só em intervalos (evita pico)
+	if accumulator >= 0.25 then
+		accumulator = 0
+
+		-- mantém render estável
+		RunService:Set3dRenderingEnabled(true)
+	end
+end)
+
+-- controle leve de memória (sem destruir nada importante)
+task.spawn(function()
+	while Active do
+		task.wait(5)
+
+		collectgarbage("step", 20)
 	end
 end)
