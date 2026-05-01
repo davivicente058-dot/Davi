@@ -961,3 +961,240 @@ task.spawn(function()
 		collectgarbage("step", 20)
 	end
 end)
+
+-- =========================================
+-- DZ PERFORMANCE - GAME TURBO (FINAL)
+-- =========================================
+
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local Active = false
+local Running = false
+
+local accumulator = 0
+
+-- =========================
+-- OTIMIZAÇÃO RÁPIDA
+-- =========================
+
+local function fastOptimize(obj)
+
+	-- reduzir custo sem destruir
+	if obj:IsA("BasePart") then
+		obj.CastShadow = false
+	end
+
+	if obj:IsA("ParticleEmitter") then
+		obj.Rate = math.min(obj.Rate, 4)
+	end
+
+	if obj:IsA("Trail") then
+		obj.Lifetime = 0.05
+	end
+
+end
+
+-- =========================
+-- LOOP PRINCIPAL
+-- =========================
+
+local function start()
+
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+
+			local objects = Workspace:GetDescendants()
+			local batch = 200
+
+			for i = 1, #objects, batch do
+				if not Active then break end
+
+				for j = i, math.min(i + batch - 1, #objects) do
+					local obj = objects[j]
+					if obj then
+						fastOptimize(obj)
+					end
+				end
+
+				task.wait()
+			end
+
+			task.wait(1.5)
+		end
+
+		Running = false
+	end)
+
+	-- =========================
+	-- CONTROLE DE FLUIDEZ
+	-- =========================
+
+	RunService.Heartbeat:Connect(function(dt)
+		if not Active then return end
+
+		accumulator += dt
+
+		if accumulator >= 0.2 then
+			accumulator = 0
+
+			-- mantém render estável
+			RunService:Set3dRenderingEnabled(true)
+		end
+	end)
+
+	-- =========================
+	-- CONTROLE DE MEMÓRIA
+	-- =========================
+
+	task.spawn(function()
+		while Active do
+			task.wait(4)
+			collectgarbage("step", 30)
+		end
+	end)
+
+end
+
+local function stop()
+	Running = false
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+_G.DZ.CreateToggle("GAME TURBO (FPS + FLUIDEZ MÁXIMA)", function(state)
+	Active = state
+
+	if state then
+		start()
+	else
+		stop()
+	end
+end)
+
+-- =========================================
+-- DZ PERFORMANCE - SMART ENGINE (INSANO)
+-- =========================================
+
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local Active = false
+
+-- =========================
+-- FPS REAL
+-- =========================
+
+local frames = 0
+local last = tick()
+local fps = 60
+
+RunService.RenderStepped:Connect(function()
+	if Active then
+		frames += 1
+	end
+end)
+
+local function updateFPS()
+	if tick() - last >= 1 then
+		fps = frames
+		frames = 0
+		last = tick()
+	end
+end
+
+-- =========================
+-- DETECÇÃO DE COMBATE
+-- =========================
+
+local lastEffect = 0
+
+Workspace.DescendantAdded:Connect(function(obj)
+	if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+		lastEffect = tick()
+	end
+end)
+
+local function inCombat()
+	return (tick() - lastEffect) < 2
+end
+
+-- =========================
+-- AÇÕES INTELIGENTES
+-- =========================
+
+local function applyTurbo()
+
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		
+		if obj:IsA("ParticleEmitter") then
+			obj.Rate = 2
+		end
+
+		if obj:IsA("Trail") then
+			obj.Lifetime = 0.05
+		end
+
+		if obj:IsA("BasePart") then
+			obj.CastShadow = false
+		end
+	end
+
+end
+
+local function applyNormal()
+
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		
+		if obj:IsA("ParticleEmitter") then
+			obj.Rate = math.min(obj.Rate, 10)
+		end
+
+	end
+
+end
+
+-- =========================
+-- LOOP INTELIGENTE
+-- =========================
+
+local Running = false
+
+local function start()
+	if Running then return end
+	Running = true
+
+	task.spawn(function()
+		while Active do
+
+			updateFPS()
+
+			if inCombat() or fps < 35 then
+				applyTurbo()
+			else
+				applyNormal()
+			end
+
+			task.wait(1)
+		end
+
+		Running = false
+	end)
+end
+
+-- =========================
+-- TOGGLE
+-- =========================
+
+_G.DZ.CreateToggle("Smart Engine (Auto PvP Turbo)", function(state)
+	Active = state
+
+	if state then
+		start()
+	end
+end)
