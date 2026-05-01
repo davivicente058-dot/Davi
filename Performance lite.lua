@@ -753,4 +753,350 @@ closeBtn.Size = UDim2.new(0, 30, 0, 24)
 closeBtn.Position = UDim2.new(1, -28, 0, 3)
 closeBtn.BackgroundTransparency = 1
 closeBtn.Text = "X"
-close
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Font = Enum.Font.GothamBlack
+closeBtn.TextSize = 14
+closeBtn.Parent = top
+
+local content =
+Instance.new("ScrollingFrame")
+content.Size = UDim2.new(1, 0, 1, -30)
+content.Position = UDim2.new(0, 0, 0, 30)
+content.BackgroundTransparency = 1
+content.BorderSizePixel = 0
+content.ScrollBarThickness = 3
+content.CanvasSize = UDim2.new(0, 0, 0, 0)
+content.Parent = main
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 5)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = content
+
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	content.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+end)
+
+local mini = Instance.new("TextButton")
+mini.Size = UDim2.new(0, 52, 0, 52)
+mini.Position = main.Position
+mini.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mini.BorderSizePixel = 0
+mini.Text = "DZ"
+mini.TextColor3 = Color3.fromRGB(255, 255, 255)
+mini.Font = Enum.Font.GothamBlack
+mini.TextSize = 18
+mini.Visible = false
+mini.Parent = gui
+Instance.new("UICorner", mini).CornerRadius = UDim.new(0, 8)
+
+local function makeDraggable(frame)
+	local dragging = false
+	local dragInput = nil
+	local dragStart = nil
+	local startPos = nil
+
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = frame.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	frame.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and input == dragInput then
+			local delta = input.Position - dragStart
+			frame.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+makeDraggable(main)
+makeDraggable(mini)
+
+local minimized = false
+local function setMini(v)
+	minimized = v
+	main.Visible = not v
+	mini.Visible = v
+	if v then
+		mini.Position = main.Position
+	end
+end
+
+minBtn.MouseButton1Click:Connect(function()
+	setMini(true)
+end)
+
+mini.MouseButton1Click:Connect(function()
+	setMini(false)
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+	gui:Destroy()
+end)
+
+local fpsHud = Instance.new("ScreenGui")
+fpsHud.Name = "DZ_FPS_HUD"
+fpsHud.ResetOnSpawn = false
+fpsHud.IgnoreGuiInset = true
+fpsHud.Parent = playerGui
+
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Size = UDim2.new(0, 120, 0, 28)
+fpsLabel.Position = UDim2.new(0, 10, 1, -70)
+fpsLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+fpsLabel.BackgroundTransparency = 0.3
+fpsLabel.BorderSizePixel = 0
+fpsLabel.Visible = false
+fpsLabel.Text = "FPS: 0"
+fpsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+fpsLabel.Font = Enum.Font.GothamBold
+fpsLabel.TextSize = 14
+fpsLabel.Parent = fpsHud
+Instance.new("UICorner", fpsLabel).CornerRadius = UDim.new(0, 6)
+
+local fpsFrames = 0
+local fpsTime = 0
+
+fpsConn = RunService.RenderStepped:Connect(function(dt)
+	fpsFrames += 1
+	fpsTime += dt
+
+	if fpsTime >= 1 then
+		fpsValue = math.floor(fpsFrames / fpsTime + 0.5)
+		fpsFrames = 0
+		fpsTime = 0
+
+		if State.ShowFPS then
+			fpsLabel.Text = "FPS: " .. fpsValue
+			if fpsValue >= 50 then
+				fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
+			elseif fpsValue >= 35 then
+				fpsLabel.TextColor3 = Color3.fromRGB(255, 190, 0)
+			else
+				fpsLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+			end
+		end
+	end
+end)
+
+local function setFPSHud(state)
+	State.ShowFPS = state
+	fpsLabel.Visible = state
+end
+
+local refreshQueued = false
+local function refresh()
+	if refreshQueued then return end
+	refreshQueued = true
+
+	task.spawn(function()
+		task.wait(0.05)
+		refreshQueued = false
+		if hasWorldFeature() then
+			startBrain()
+		else
+			restoreWorld()
+		end
+
+		if not hasCharFeature() then
+			restoreChar()
+		else
+			startBrain()
+		end
+	end)
+end
+
+local function applyPreset(name, state)
+	if state then
+		setExclusive(name, true)
+	else
+		setExclusive(name, false)
+	end
+	refresh()
+end
+
+addSwitch("Casual", "Modo Casual", false, function(v)
+	applyPreset("Casual", v)
+end)
+
+addSwitch("Competitive", "Modo Competitivo", false, function(v)
+	applyPreset("Competitive", v)
+end)
+
+addSwitch("Batata", "Modo Batata", false, function(v)
+	applyPreset("Batata", v)
+end)
+
+addSwitch("VFXDynamic", "VFX Dinâmico", false, function(v)
+	State.VFXDynamic = v
+	refresh()
+end)
+
+addSwitch("PlayerOpt", "Player Optimizer", false, function(v)
+	State.PlayerOpt = v
+	refresh()
+end)
+
+addSwitch("AntiStutter", "Anti Stutter", false, function(v)
+	State.AntiStutter = v
+	refresh()
+end)
+
+addSwitch("GameTurbo", "Game Turbo", false, function(v)
+	State.GameTurbo = v
+	refresh()
+end)
+
+addSwitch("SmartEngine", "Smart Engine", false, function(v)
+	State.SmartEngine = v
+	refresh()
+end)
+
+addSwitch("ShowFPS", "Mostrar FPS Real", false, function(v)
+	setFPSHud(v)
+end)
+
+local section1 = Instance.new("TextLabel")
+section1.Size = UDim2.new(1, -10, 0, 20)
+section1.BackgroundTransparency = 1
+section1.Text = "PRESETS"
+section1.TextColor3 = Color3.fromRGB(160, 160, 160)
+section1.Font = Enum.Font.GothamBold
+section1.TextSize = 11
+section1.TextXAlignment = Enum.TextXAlignment.Left
+section1.Parent = content
+
+section1.LayoutOrder = 1
+for _, child in ipairs(content:GetChildren()) do
+	if child:IsA("Frame") then
+		child.LayoutOrder = child.LayoutOrder + 1
+	end
+end
+
+local section2 = Instance.new("TextLabel")
+section2.Size = UDim2.new(1, -10, 0, 20)
+section2.BackgroundTransparency = 1
+section2.Text = "EXTRAS"
+section2.TextColor3 = Color3.fromRGB(160, 160, 160)
+section2.Font = Enum.Font.GothamBold
+section2.TextSize = 11
+section2.TextXAlignment = Enum.TextXAlignment.Left
+section2.Parent = content
+section2.LayoutOrder = 10
+
+local section3 = Instance.new("TextLabel")
+section3.Size = UDim2.new(1, -10, 0, 20)
+section3.BackgroundTransparency = 1
+section3.Text = "HUD / AUTO"
+section3.TextColor3 = Color3.fromRGB(160, 160, 160)
+section3.Font = Enum.Font.GothamBold
+section3.TextSize = 11
+section3.TextXAlignment = Enum.TextXAlignment.Left
+section3.Parent = content
+section3.LayoutOrder = 20
+
+local function makeMaintenanceLoop()
+	if brainRunning then return end
+	brainRunning = true
+
+	task.spawn(function()
+		while State.AntiStutter or hasWorldFeature() or hasCharFeature() do
+			if State.SmartEngine then
+				if os.clock() - lastCombat < 2.2 or fpsValue < 28 then
+					smartPower = 3
+				elseif fpsValue < 42 then
+					smartPower = 2
+				else
+					smartPower = 1
+				end
+			else
+				smartPower = 0
+			end
+
+			if State.VFXDynamic then
+				if fpsValue > 55 then
+					vfxPower = 1
+				elseif fpsValue > 40 then
+					vfxPower = 2
+				else
+					vfxPower = 3
+				end
+			else
+				vfxPower = 0
+			end
+
+			if State.AntiStutter then
+				collectgarbage("step", State.GameTurbo and 24 or 16)
+			end
+
+			if hasWorldFeature() then
+				local power = worldPower()
+				applyLighting(power)
+
+				local list = Workspace:GetDescendants()
+				local batch = State.GameTurbo and 100 or 140
+
+				for i = 1, #list, batch do
+					if not (hasWorldFeature() or hasCharFeature() or State.AntiStutter) then
+						break
+					end
+
+					for j = i, math.min(i + batch - 1, #list) do
+						local obj = list[j]
+						if obj then
+							optimizeWorld(obj, power)
+						end
+					end
+
+					task.wait()
+				end
+			end
+
+			if hasCharFeature() then
+				local power = charPower()
+				local plist = Players:GetPlayers()
+				local batch = State.GameTurbo and 3 or 5
+
+				for i = 1, #plist, batch do
+					for j = i, math.min(i + batch - 1, #plist) do
+						local plr = plist[j]
+						if plr and plr.Character then
+							for _, obj in ipairs(plr.Character:GetDescendants()) do
+								optimizeCharacterObject(obj, power)
+							end
+						end
+					end
+					task.wait()
+				end
+			end
+
+			task.wait(State.GameTurbo and 0.8 or 1.2)
+		end
+
+		brainRunning = false
+	end)
+end
+
+refresh()
+
+print("[DZ] Lite build loaded")
